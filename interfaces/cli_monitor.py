@@ -35,7 +35,7 @@ def render_game_area(state: GameState):
         from systems.progression import required_exp
         exp_needed = required_exp(player.level)
         table.add_row("EXP", f"{player.exp}/{exp_needed}")
-    except:
+    except Exception:
         table.add_row("EXP", f"{player.exp}/?")
 
     table.add_row("ATK", str(player.atk))

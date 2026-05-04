@@ -1,7 +1,7 @@
 """
 Loot system - module generation from purged entities.
 """
-import random
+import random   # # nosec B311
 from models.module import Module, Rarity, Slot
 
 

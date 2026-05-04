@@ -1,9 +1,10 @@
-import random
+import random  # nosec B311 — used for gameplay randomness only
 import time
 from systems import progression
 from game.event_logger import event_logger
 from game.formulas import combat_damage, apply_crit, enemy_damage
 from game.achievement_tracker import check_and_unlock
+
 
 def tick_combat(state):
     player = state.player
@@ -11,7 +12,7 @@ def tick_combat(state):
 
     # Player deal damage
     damage = combat_damage(player.atk, player.dps, enemy.defense)
-    damage = apply_crit(damage, player.crit_rate, player.crit_damage)
+    damage = apply_crit(damage, player.crit_rate, player.crit_damage)  # nosec B311
     enemy.hp = max(0, enemy.hp - damage)
 
     # Enemy attacks back (only if enemy alive)
@@ -34,7 +35,6 @@ def tick_combat(state):
         from models.enemy import Enemy
         state.enemy = Enemy.generate_prime(state.current_stage)
         event_logger.emit("prime_spawn", f"PRIME INSTANCE DETECTED: {state.enemy.name}")
-        # Skip the rest of this tick to avoid double-processing
         return
 
     # Enemy death
@@ -46,7 +46,7 @@ def tick_combat(state):
         event_logger.emit("target_purged", f"TARGET PURGED: {enemy.name} | +{enemy.reward_gold} CREDITS +{enemy.reward_exp} EXP")
 
         # Loot drop (50%)
-        if random.random() < 0.5:
+        if random.random() < 0.5:  # nosec B311 — gameplay loot roll
             from systems.loot import generate_module
             loot = generate_module(state.current_stage)
             player.inventory.append(loot)
@@ -67,7 +67,7 @@ def tick_combat(state):
             state.enemy = Enemy.generate(state.current_stage)
             event_logger.emit("new_target", f"SECTOR {state.current_stage}: {state.enemy.name}")
 
-    # Auto-restore if dead (biar nggak stuck lama)
+    # Auto-restore if dead
     if getattr(state, "player_dead", False):
         player.hp = player.effective_max_hp
         state.player_dead = False

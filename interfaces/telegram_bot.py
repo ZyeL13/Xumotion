@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from game.engine import process_command
 from game.state import GameState
 from game.event_logger import event_logger
+from systems.progression import required_exp
 
 TELEGRAM_TOKEN = os.environ.get("RPG_BOT_TOKEN", "")
 
@@ -19,9 +20,8 @@ class TelegramBot:
         p = self.state.player
         e = self.state.enemy
         try:
-            from systems.progression import required_exp
             exp_needed = required_exp(p.level)
-        except:
+        except Exception:
             exp_needed = "?"
 
         # Progress bars

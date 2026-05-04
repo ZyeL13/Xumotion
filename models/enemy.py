@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-import random
+import random   # # nosec B311
 from game.constants import (
     BASE_ENEMY_HP, ENEMY_HP_GROWTH,
     BASE_GOLD_REWARD, GOLD_REWARD_GROWTH,

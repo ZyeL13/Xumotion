@@ -5,12 +5,20 @@ import threading
 import os
 from urllib.parse import urlparse
 from pathlib import Path
+from game.event_logger import event_logger
+
+# Configurable host/port — defaults to localhost for security
+WEB_HOST = os.environ.get("WEB_HOST", "127.0.0.1")
+WEB_PORT = int(os.environ.get("WEB_PORT", "8080"))
+WS_HOST = os.environ.get("WS_HOST", "127.0.0.1")
+WS_PORT = int(os.environ.get("WS_PORT", "8081"))
 
 game_state = None
 websockets_clients = []
 
 # Path ke folder static
 STATIC_DIR = Path(__file__).parent / "static"
+
 
 class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -84,18 +92,24 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
+    def log_message(self, format, *args):
+        """Suppress default HTTP request logging to stdout."""
+        pass
+
+
 async def ws_handler(websocket):
     websockets_clients.append(websocket)
     try:
         async for _ in websocket:
             pass
-    except:
+    except Exception:
         pass
     finally:
-        websockets_clients.remove(websocket)
+        if websocket in websockets_clients:
+            websockets_clients.remove(websocket)
+
 
 async def ws_broadcast():
-    from game.event_logger import event_logger
     while True:
         ev = event_logger.poll()
         if ev and websockets_clients:
@@ -104,21 +118,29 @@ async def ws_broadcast():
                 "type": ev.event_type,
                 "message": ev.message,
             })
-            for ws in websockets_clients[:]:
+            disconnected = []
+            for ws in websockets_clients:
                 try:
                     await ws.send(data)
-                except:
+                except Exception:
+                    disconnected.append(ws)
+            for ws in disconnected:
+                if ws in websockets_clients:
                     websockets_clients.remove(ws)
         await asyncio.sleep(0.5)
 
+
 async def run_ws_server():
     import websockets
-    async with websockets.serve(ws_handler, "0.0.0.0", 8081):
+    async with websockets.serve(ws_handler, WS_HOST, WS_PORT):
         await ws_broadcast()
 
+
 def run_http_server():
-    server = http.server.HTTPServer(("0.0.0.0", 8080), ConsoleHandler)
+    server = http.server.HTTPServer((WEB_HOST, WEB_PORT), ConsoleHandler)
+    print(f"Web dashboard: http://{WEB_HOST}:{WEB_PORT}")
     server.serve_forever()
+
 
 def start_web(state):
     global game_state

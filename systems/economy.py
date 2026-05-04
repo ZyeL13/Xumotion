@@ -101,7 +101,7 @@ def enhance_agent(state, agent_name: str) -> str:
                 if agent_num == target_num:
                     target = agent
                     break
-            except:
+            except Exception:
                 pass
     
     if not target and matches:
