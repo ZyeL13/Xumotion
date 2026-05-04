@@ -1,0 +1,17 @@
+{
+  "normal_names": ["Echo Fragment", "Corrupt Process", "Forked Instance", "Phantom Thread", "Rogue Worker", "Memory Leak"],
+  "boss_names": ["Validator Prime", "Deadlock Core", "Archive Warden"],
+  "boss_interval": 10,
+  "scaling": {
+    "base_hp": 50,
+    "hp_growth": 1.18,
+    "base_gold": 10,
+    "gold_growth": 1.20,
+    "base_exp": 5,
+    "exp_growth": 1.14,
+    "base_atk": 3,
+    "atk_growth": 1.08
+  },
+  "entity_base_atk": 0,
+  "entity_base_defense": 0
+}

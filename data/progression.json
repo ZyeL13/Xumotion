@@ -1,0 +1,20 @@
+{
+  "level_exp": {
+    "base": 20,
+    "growth": 1.2
+  },
+  "level_up_rewards": {
+    "atk_increase": 3,
+    "max_hp_increase": 10
+  },
+  "offline_cap_seconds": 28800,
+    "prestige": {
+      "stage_requirement": 50,
+      "core_per_stage": 0.1,
+      "credits_mult_per_core": 0.1,
+      "exp_mult_per_core": 0.1,
+      "atk_mult_per_core": 0.05,
+      "def_mult_per_core": 0.05,
+      "hp_mult_per_core": 0.05
+    }
+}

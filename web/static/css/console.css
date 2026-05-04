@@ -1,0 +1,82 @@
+:root {
+    --bg:        #0D1117;
+    --panel:     #161B22;
+    --border:    #2A2F36;
+    --text:      #C9D1D9;
+    --muted:     #8B949E;
+    --green:     #7EE787;
+    --blue:      #79C0FF;
+    --amber:     #E3B341;
+    --red:       #FF7B72;
+    --radius:    12px;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+}
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+#app {
+    display: flex;
+    width: 100%;
+}
+#sidebar {
+    width: 200px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+}
+#main-panel {
+    flex: 1;
+    padding: 20px;
+}
+#right-panel {
+    width: 280px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+}
+.stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+    font-family: var(--font-mono);
+}
+#integrity-bar {
+    background: var(--border);
+    border-radius: 8px;
+    height: 20px;
+    margin: 8px 0;
+}
+#integrity-fill {
+    background: var(--green);
+    border-radius: 8px;
+    height: 100%;
+    transition: width 0.5s;
+}
+.metric {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: var(--font-mono);
+}
+button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--blue);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+}
+button:hover {
+    background: var(--border);
+}

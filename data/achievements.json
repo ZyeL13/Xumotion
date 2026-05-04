@@ -1,0 +1,15 @@
+{
+  "achievements": [
+    {"id": "first_kill", "name": "First Purge", "desc": "Purge your first entity", "type": "kills", "target": 1, "reward_credits": 50},
+    {"id": "kills_10", "name": "Entity Hunter", "desc": "Purge 10 entities", "type": "kills", "target": 10, "reward_credits": 200},
+    {"id": "kills_50", "name": "Sector Cleaner", "desc": "Purge 50 entities", "type": "kills", "target": 50, "reward_credits": 1000},
+    {"id": "kills_100", "name": "Null Sweeper", "desc": "Purge 100 entities", "type": "kills", "target": 100, "reward_credits": 2500},
+    {"id": "kills_500", "name": "Archive Purge", "desc": "Purge 500 entities", "type": "kills", "target": 500, "reward_credits": 10000},
+    {"id": "stage_10", "name": "Relay Access", "desc": "Reach Sector 10", "type": "stage", "target": 10, "reward_credits": 300},
+    {"id": "stage_50", "name": "Core Network", "desc": "Reach Sector 50", "type": "stage", "target": 50, "reward_credits": 5000},
+    {"id": "credits_1000", "name": "Buffer Full", "desc": "Accumulate 1000 credits", "type": "credits", "target": 1000, "reward_credits": 100},
+    {"id": "rank_5", "name": "Operator", "desc": "Reach Rank 5", "type": "rank", "target": 5, "reward_credits": 150},
+    {"id": "rank_10", "name": "Maintainer", "desc": "Reach Rank 10", "type": "rank", "target": 10, "reward_credits": 500},
+    {"id": "recompile_1", "name": "First Recompile", "desc": "Recompile once", "type": "recompile", "target": 1, "reward_credits": 2000}
+  ]
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XUMOTION — Systems Console</title>
+    <link rel="stylesheet" href="/static/css/console.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="logo">XUMOTION</div>
+            <ul>
+                <li class="active" data-panel="overview">Overview</li>
+                <li data-panel="agents">Agents</li>
+                <li data-panel="modules">Modules</li>
+                <li data-panel="log">Event Log</li>
+                <li data-panel="settings">Settings</li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="node-status">NODE: ACTIVE</div>
+                <div class="core-count">CORE: 5</div>
+            </div>
+        </nav>
+
+        <!-- Main Panel -->
+        <main id="main-panel">
+            <!-- Status Strip -->
+            <div id="status-strip">
+                <div class="stat-card">SYSTEM ONLINE</div>
+                <div class="stat-card">SECTOR <span id="stage">--</span></div>
+                <div class="stat-card">RANK <span id="rank">--</span></div>
+                <div class="stat-card">UPTIME <span id="uptime">--</span></div>
+            </div>
+
+            <!-- Hero: Current Target -->
+            <div id="target-panel">
+                <div class="target-header">
+                    <span id="entity-name">---</span>
+                    <span id="entity-rarity" class="badge">---</span>
+                </div>
+                <div id="integrity-bar">
+                    <div id="integrity-fill"></div>
+                    <span id="integrity-text">---/---</span>
+                </div>
+                <div class="target-rewards">
+                    <span>Credits: +<span id="target-gold">--</span></span>
+                    <span>EXP: +<span id="target-exp">--</span></span>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="sendCommand('enhance atk')">ENHANCE ATK</button>
+                    <button onclick="sendCommand('deploy')">DEPLOY</button>
+                    <button onclick="sendCommand('auto on')">AUTO</button>
+                    <button onclick="sendCommand('checkpoint')">CHECKPOINT</button>
+                </div>
+            </div>
+
+            <!-- Operator Stats Grid -->
+            <div id="operator-grid">
+                <div class="metric">ATK <span id="atk">--</span></div>
+                <div class="metric">DPS <span id="dps">--</span></div>
+                <div class="metric">DEF <span id="def">--</span></div>
+                <div class="metric">CRIT <span id="crit">--</span></div>
+                <div class="metric">HP <span id="hp">--</span></div>
+                <div class="metric">AGENTS <span id="agents">--</span></div>
+                <div class="metric">MODULES <span id="modules">--</span></div>
+                <div class="metric">CREDITS <span id="credits">--</span></div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Event Feed -->
+        <aside id="right-panel">
+            <h3>EVENT STREAM</h3>
+            <div id="event-feed"></div>
+        </aside>
+    </div>
+
+    <link rel="stylesheet" href="/css/console.css">
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/feed.js"></script>
+</body>
+</html>

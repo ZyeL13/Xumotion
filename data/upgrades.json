@@ -1,0 +1,23 @@
+{
+  "atk": {
+    "base_cost": 10,
+    "growth": 1.13,
+    "increment": 1
+  },
+  "defense": {
+    "base_cost": 15,
+    "growth": 1.18,
+    "increment": 1
+  },
+  "max_hp": {
+    "base_cost": 20,
+    "growth": 1.20,
+    "increment": 10
+  },
+  "crit_rate": {
+    "base_cost": 25,
+    "growth": 1.22,
+    "increment": 0.01
+  }
+}
+
