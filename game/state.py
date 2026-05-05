@@ -1,7 +1,11 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from models.player import Player
-from models.enemy import Enemy
 import threading
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.player import Player
+    from models.enemy import Enemy
 
 
 @dataclass
@@ -16,3 +20,4 @@ class GameState:
     output_message: str = ""
     lock: threading.Lock = field(default_factory=threading.Lock)
     player_dead: bool = False
+    prime_timer: float = 0.0

@@ -2,7 +2,6 @@ import json
 import os
 import time
 from models.player import Player
-from models.enemy import Enemy
 from game.state import GameState
 
 SAVE_PATH = "saves/savegame.json"
@@ -28,6 +27,8 @@ def save_game(state: GameState):
 
 
 def load_game() -> GameState | None:
+    from models.enemy import Enemy  # late import to avoid circular dependency
+
     if not os.path.exists(SAVE_PATH):
         return None
 
@@ -41,7 +42,6 @@ def load_game() -> GameState | None:
         return None
 
     version = data.get("version", 0)
-    # Migration jika diperlukan (placeholder)
     if version < CURRENT_VERSION:
         _migrate(data, version)
 
@@ -60,8 +60,4 @@ def load_game() -> GameState | None:
 
 
 def _migrate(data: dict, from_version: int):
-    # Contoh migrasi di masa depan:
-    # if from_version < 2:
-    #     # tambah field baru
-    #     data["player"]["new_field"] = default_value
     pass

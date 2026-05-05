@@ -78,7 +78,7 @@ class TelegramBot:
             f"ATK: {p.atk}             DPS: {p.dps}",
             f"DEF: {p.defense}            CRIT: {p.crit_rate:.0%} x{p.crit_damage:.1f}",
             f"Integrity: {p.hp}/{p.effective_max_hp}",
-            f"Agents: {agents_str}",
+            f"Agents: {agents_str} [{p.get_deployed_count()}/{p.max_agent_slots} slots]",
             "",
             "COMMANDS",
             "/stats /enhance /deploy /install",
@@ -98,6 +98,8 @@ class TelegramBot:
             BotCommand("stats", "Operator stats"),
             BotCommand("enhance", "Enhance module (atk|defense|max_hp|crit_rate)"),
             BotCommand("deploy", "Deploy agent"),
+            BotCommand("undeploy", "Undeploy agent"),
+            BotCommand("merge", "Merge 3 agents of same tier"),
             BotCommand("install", "Install module from bay"),
             BotCommand("uninstall", "Uninstall module by slot"),
             BotCommand("modules", "View module bay & agents"),
@@ -136,6 +138,20 @@ class TelegramBot:
                 response = process_command(self.state, f"deploy {agent_type}")
             await update.message.reply_text(response)
 
+        async def undeploy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not context.args:
+                await update.message.reply_text("USAGE: /undeploy <agent name/number>")
+                return
+            response = process_command(self.state, f"undeploy {context.args[0]}")
+            await update.message.reply_text(response)
+
+        async def merge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if len(context.args) < 3:
+                await update.message.reply_text("USAGE: /merge <id1> <id2> <id3>")
+                return
+            response = process_command(self.state, f"merge {context.args[0]} {context.args[1]} {context.args[2]}")
+            await update.message.reply_text(response)
+
         async def install(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not context.args:
                 response = process_command(self.state, "install")
@@ -158,26 +174,35 @@ class TelegramBot:
 
         async def modules(update: Update, context: ContextTypes.DEFAULT_TYPE):
             p = self.state.player
-            agents_str = ", ".join(a.name for a in p.agents) if p.agents else "none"
+            # Agents list
+            if p.agents:
+                agent_lines = []
+                for i, a in enumerate(p.agents):
+                    deployed = " [ACTIVE]" if a.deployed else ""
+                    agent_lines.append(f"[{i+1}] {a.name}{deployed} (Tier: {a.tier}, Lv.{a.level}, DPS {a.dps})")
+                    agents_str = "\n".join(agent_lines)
+            else:
+                agents_str = "none"
+
+            slots_info = f"SLOTS: {p.get_deployed_count()}/{p.max_agent_slots} active"
+
+            # Module bay
             if p.inventory:
-                lines = []
+                mod_lines = []
                 for i, mod in enumerate(p.inventory):
                     stat_parts = []
-                    if mod.atk_bonus:
-                        stat_parts.append(f"ATK+{mod.atk_bonus}")
-                    if mod.def_bonus:
-                        stat_parts.append(f"DEF+{mod.def_bonus}")
-                    if mod.hp_bonus:
-                        stat_parts.append(f"HP+{mod.hp_bonus}")
-                    if mod.crit_rate_bonus:
-                        stat_parts.append(f"CRIT+{mod.crit_rate_bonus:.1%}")
-                    stats = " | ".join(stat_parts) if stat_parts else "no stats"
+                    if mod.atk_bonus: stat_parts.append(f"ATK+{mod.atk_bonus}")
+                    if mod.def_bonus: stat_parts.append(f"DEF+{mod.def_bonus}")
+                    if mod.hp_bonus: stat_parts.append(f"HP+{mod.hp_bonus}")
+                    if mod.crit_rate_bonus: stat_parts.append(f"CRIT+{mod.crit_rate_bonus:.1%}")
+                    stats = " | ".join(stat_parts) or "no stats"
                     installed = " [INSTALLED]" if mod.installed else ""
-                    lines.append(f"[{i+1}] {mod.name}{installed}\n    {stats}")
-                bay_str = "\n".join(lines)
+                    mod_lines.append(f"[{i+1}] {mod.name}{installed}\n    {stats}")
+                bay_str = "\n".join(mod_lines)
             else:
                 bay_str = "empty"
-            msg = f"AGENTS: {agents_str}\n\nMODULE BAY ({len(p.inventory)} slots):\n{bay_str}"
+
+            msg = f"AGENTS:\n{agents_str}\n\n{slots_info}\n\nMODULE BAY ({len(p.inventory)}):\n{bay_str}"
             await update.message.reply_text(msg)
 
         async def recompile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -224,6 +249,8 @@ class TelegramBot:
         self.app.add_handler(CommandHandler("stats", stats))
         self.app.add_handler(CommandHandler("enhance", enhance))
         self.app.add_handler(CommandHandler("deploy", deploy))
+        self.app.add_handler(CommandHandler("undeploy", undeploy))
+        self.app.add_handler(CommandHandler("merge", merge_cmd))
         self.app.add_handler(CommandHandler("install", install))
         self.app.add_handler(CommandHandler("uninstall", uninstall))
         self.app.add_handler(CommandHandler("modules", modules))

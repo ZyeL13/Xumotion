@@ -54,17 +54,33 @@ def process_command(state: GameState, cmd: str) -> str:
             return handle_upgrade(state, parts[1])
 
         elif action in ("deploy", "buy", "b"):
+            from systems.economy import deploy_agent, deploy_specific_agent
+            from game.registry import AGENT_REGISTRY
             if len(parts) < 2 or parts[1] in ("agent", "agents"):
-                return deploy_agent(state)
+                return deploy_agent(state)  # beli agent termurah (auto-deploy kalau ada slot)
             elif parts[1] == "list":
                 lines = ["AVAILABLE AGENTS:"]
                 for agent_id, agent_def in AGENT_REGISTRY.items():
                     owned = sum(1 for a in player.agents if a.name.startswith(agent_def.name))
+                    from game.formulas import pet_cost
                     cost = pet_cost(agent_def, owned)
-                    lines.append(f"  {agent_def.name} (DPS {agent_def.base_dps}) — {cost} credits")
+                    lines.append(f"  {agent_def.name} (Tier: {agent_def.tier}, DPS {agent_def.base_dps}) — {cost} credits")
                 return "\n".join(lines)
             else:
-                return deploy_agent(state, parts[1])
+                # Mencoba memasang agent yang sudah dimiliki (dari bay) ke slot
+                return deploy_specific_agent(state, parts[1])
+
+        elif action in ("undeploy", "uns"):
+            if len(parts) < 2:
+                return "USAGE: undeploy <agent name/number>"
+            from systems.economy import undeploy_agent
+            return undeploy_agent(state, parts[1])
+
+        elif action in ("merge",):
+            if len(parts) < 4:
+                return "USAGE: merge <id1> <id2> <id3>"
+            from systems.economy import merge_agents
+            return merge_agents(state, parts[1], parts[2], parts[3])
 
         elif action in ("install", "equip", "eq"):
             if len(parts) < 2:
@@ -170,7 +186,7 @@ def process_command(state: GameState, cmd: str) -> str:
             return enhance_agent(state, parts[1])
 
         elif action in ("help", "h", "?"):
-            return "enhance <stat> | deploy agent | install <n> | uninstall <slot> | recompile | core | auto | cycle | log | modules | restore | checkpoint | shutdown | ea <agent>"
+            return "enhance <stat> | deploy agent | install <n> | uninstall <slot> | recompile | core | auto | cycle | log | modules | restore | checkpoint | shutdown | ea <agent> | merge <id1> <id2> <id3>"
 
         else:
             return f"UNKNOWN: '{action}'. Type 'help' for commands."

@@ -1,26 +1,80 @@
 {
-  "echo_unit": {
-    "name": "Echo Unit",
-    "dps": 3,
-    "base_cost": 80,
-    "cost_growth_per_pet": 1.5
-  },
-  "drift_process": {
-    "name": "Drift Process",
-    "dps": 8,
-    "base_cost": 250,
-    "cost_growth_per_pet": 1.6
-  },
-  "cache_sprite": {
-    "name": "Cache Sprite",
-    "dps": 15,
-    "base_cost": 600,
-    "cost_growth_per_pet": 1.7
-  },
-  "oracle_fragment": {
-    "name": "Oracle Fragment",
-    "dps": 30,
-    "base_cost": 1500,
-    "cost_growth_per_pet": 1.8
-  }
+  "common": [
+    {
+      "id": "echo_unit",
+      "name": "Echo Unit",
+      "tier": "common",
+      "base_dps": 3,
+      "base_cost": 80,
+      "cost_growth_per_pet": 1.5,
+      "enhance_cost_base": 50,
+      "enhance_cost_growth": 1.35
+    },
+    {
+      "id": "drift_process",
+      "name": "Drift Process",
+      "tier": "common",
+      "base_dps": 8,
+      "base_cost": 250,
+      "cost_growth_per_pet": 1.6,
+      "enhance_cost_base": 80,
+      "enhance_cost_growth": 1.35
+    }
+  ],
+  "rare": [
+    {
+      "id": "cache_sprite",
+      "name": "Cache Sprite",
+      "tier": "rare",
+      "base_dps": 15,
+      "base_cost": 600,
+      "cost_growth_per_pet": 1.7,
+      "enhance_cost_base": 150,
+      "enhance_cost_growth": 1.4
+    },
+    {
+      "id": "proxy_node",
+      "name": "Proxy Node",
+      "tier": "rare",
+      "base_dps": 22,
+      "base_cost": 900,
+      "cost_growth_per_pet": 1.7,
+      "enhance_cost_base": 200,
+      "enhance_cost_growth": 1.4
+    }
+  ],
+  "epic": [
+    {
+      "id": "oracle_fragment",
+      "name": "Oracle Fragment",
+      "tier": "epic",
+      "base_dps": 30,
+      "base_cost": 1500,
+      "cost_growth_per_pet": 1.8,
+      "enhance_cost_base": 300,
+      "enhance_cost_growth": 1.45
+    },
+    {
+      "id": "sentinel_unit",
+      "name": "Sentinel Unit",
+      "tier": "epic",
+      "base_dps": 45,
+      "base_cost": 2500,
+      "cost_growth_per_pet": 1.8,
+      "enhance_cost_base": 400,
+      "enhance_cost_growth": 1.45
+    }
+  ],
+  "prime": [
+    {
+      "id": "genesis_kernel",
+      "name": "Genesis Kernel",
+      "tier": "prime",
+      "base_dps": 70,
+      "base_cost": 5000,
+      "cost_growth_per_pet": 1.9,
+      "enhance_cost_base": 600,
+      "enhance_cost_growth": 1.5
+    }
+  ]
 }

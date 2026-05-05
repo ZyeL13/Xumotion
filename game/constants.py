@@ -2,7 +2,7 @@
 Game constants - loaded from JSON data files.
 NO imports from other game modules (to avoid circular deps).
 """
-from game.content import load_enemies, load_upgrades, load_pets, load_progression
+from game.content import load_enemies, load_upgrades, load_pets, load_progression, load_agents
 
 # Load raw configs
 _enemy = load_enemies()
@@ -36,17 +36,27 @@ ENEMY_ATK_GROWTH = ENEMY_SCALING.get("atk_growth", 1.10)
 # --- Upgrades (raw data) ---
 UPGRADE_DATA = _upgrades
 
-# --- Pets (raw data) ---
-AGENT_DATA = _pets
+# --- Agents (raw data) ---
+from game.content import load_agents
+AGENT_RAW = load_agents()
 
-# Fallback first pet
-_first_pet_id = next(iter(_pets)) if _pets else None
-if _first_pet_id:
-    _p = _pets[_first_pet_id]
-    AGENT_NAME = _p.get("name", "Echo Unit")
-    AGENT_BASE_COST = _p.get("base_cost", 80)
-    AGENT_COST_GROWTH = _p.get("cost_growth_per_pet", 1.5)
-    AGENT_BASE_DPS = _p.get("dps", 3)
+def _flatten_agents(raw: dict) -> dict:
+    flat = {}
+    for tier, agents in raw.items():
+        for agent in agents:
+            flat[agent["id"]] = agent
+    return flat
+
+AGENT_DEFINITIONS = _flatten_agents(AGENT_RAW)
+
+# Fallback first agent
+_first_agent_id = next(iter(AGENT_DEFINITIONS)) if AGENT_DEFINITIONS else None
+if _first_agent_id:
+    _a = AGENT_DEFINITIONS[_first_agent_id]
+    AGENT_NAME = _a.get("name", "Echo Unit")
+    AGENT_BASE_COST = _a.get("base_cost", 80)
+    AGENT_COST_GROWTH = _a.get("cost_growth_per_pet", 1.5)
+    AGENT_BASE_DPS = _a.get("base_dps", 3)
 else:
     AGENT_NAME = "Echo Unit"
     AGENT_BASE_COST = 80

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
-from models.pet import Agent
+from models.agent import Agent
 from models.module import Module
 
 
@@ -20,16 +20,27 @@ class Player:
     inventory: list = field(default_factory=list)
     agents: List[Agent] = field(default_factory=list)
 
-    # upgrade levels (how many times each was purchased)
+    # upgrade levels
     atk_upgrade_lvl: int = 0
     def_upgrade_lvl: int = 0
     hp_upgrade_lvl: int = 0
     crit_upgrade_lvl: int = 0
 
+    # core/prestige
     core_points: int = 0
     core_spent: int = 0
     recompile_count: int = 0
+
+    # automation
     auto_enhance: bool = False
+
+    # agent slots
+
+    def get_deployed_count(self) -> int:
+        return sum(1 for a in self.agents if a.deployed)
+
+    def get_available_slots(self) -> int:
+        return max(0, self.max_agent_slots - self.get_deployed_count())
 
     def to_dict(self) -> dict:
         return {
@@ -55,9 +66,10 @@ class Player:
             "recompile_count": self.recompile_count,
             "auto_enhance": self.auto_enhance,
         }
+
     @property
     def total_atk(self) -> int:
-        """ATK after prestige multiplier."""
+        """ATK after core multiplier."""
         mult = 1.0 + (self.core_points * 0.05)
         return int(self.atk * mult)
 
@@ -68,6 +80,13 @@ class Player:
     @property
     def effective_max_hp(self) -> int:
         return int(self.max_hp * (1.0 + self.core_points * 0.05))
+
+    @property
+    def max_agent_slots(self) -> int:
+        base = 2
+        rank_bonus = self.level // 15
+        recompile_bonus = self.recompile_count // 3
+        return base + rank_bonus + recompile_bonus
 
     @classmethod
     def from_dict(cls, data: dict) -> "Player":
@@ -93,5 +112,5 @@ class Player:
             recompile_count=data.get("recompile_count", 0),
             auto_enhance=data.get("auto_enhance", False),
         )
-        player.agents = [Agent.from_dict(a) for a in data.get("agents", [])]  # ✅
+        player.agents = [Agent.from_dict(a) for a in data.get("agents", [])]
         return player

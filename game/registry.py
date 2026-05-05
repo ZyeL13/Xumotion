@@ -1,10 +1,10 @@
 """
-Registry pattern - UPGRADE_REGISTRY and PET_REGISTRY.
-Loads raw data from constants.py (UPGRADE_DATA, PET_DATA).
+Registry pattern - UPGRADE_REGISTRY and AGENT_REGISTRY.
+Loads raw data from constants.py (UPGRADE_DATA, AGENT_DEFINITIONS).
 """
 from dataclasses import dataclass
 from typing import Any, Dict, Callable
-from game.constants import UPGRADE_DATA, AGENT_DATA
+from game.constants import UPGRADE_DATA, AGENT_DEFINITIONS
 
 
 @dataclass
@@ -18,12 +18,15 @@ class UpgradeDef:
 
 
 @dataclass
-class PetDef:
-    pet_id: str
+class AgentDef:
+    agent_id: str
     name: str
+    tier: str
     base_dps: int
     base_cost: int
-    cost_growth_per_pet: float
+    cost_growth_per_agent: float
+    enhance_cost_base: int
+    enhance_cost_growth: float
 
 
 # ---------- Apply functions ----------
@@ -68,26 +71,32 @@ for key, cfg in UPGRADE_DATA.items():
     )
 
 
-# ---------- Build Pet Registry ----------
-AGENT_REGISTRY: Dict[str, PetDef] = {}
+# ---------- Build Agent Registry ----------
+AGENT_REGISTRY: Dict[str, AgentDef] = {}
 
-if AGENT_DATA:
-    for pet_id, cfg in AGENT_DATA.items():
-        AGENT_REGISTRY[pet_id] = PetDef(
-            pet_id=pet_id,
-            name=cfg.get("name", pet_id),
-            base_dps=cfg.get("dps", 1),
+if AGENT_DEFINITIONS:
+    for agent_id, cfg in AGENT_DEFINITIONS.items():
+        AGENT_REGISTRY[agent_id] = AgentDef(
+            agent_id=agent_id,
+            name=cfg.get("name", agent_id),
+            tier=cfg.get("tier", "common"),
+            base_dps=cfg.get("base_dps", 1),
             base_cost=cfg.get("base_cost", 100),
-            cost_growth_per_pet=cfg.get("cost_growth_per_pet", 1.5),
+            cost_growth_per_agent=cfg.get("cost_growth_per_pet", 1.5),
+            enhance_cost_base=cfg.get("enhance_cost_base", 50),
+            enhance_cost_growth=cfg.get("enhance_cost_growth", 1.35),
         )
 else:
-    # Fallback single pet
-    AGENT_REGISTRY["baby_slime"] = PetDef(
-        pet_id="baby_slime",
-        name="Baby Slime",
-        base_dps=1,
-        base_cost=100,
-        cost_growth_per_pet=1.5,
+    # Fallback single agent
+    AGENT_REGISTRY["echo_unit"] = AgentDef(
+        agent_id="echo_unit",
+        name="Echo Unit",
+        tier="common",
+        base_dps=3,
+        base_cost=80,
+        cost_growth_per_agent=1.5,
+        enhance_cost_base=50,
+        enhance_cost_growth=1.35,
     )
 
-DEFAULT_AGENT_ID = next(iter(AGENT_REGISTRY)) if AGENT_REGISTRY else "baby_slime"
+DEFAULT_AGENT_ID = next(iter(AGENT_REGISTRY)) if AGENT_REGISTRY else "echo_unit"

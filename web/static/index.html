@@ -1,83 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XUMOTION — Systems Console</title>
-    <link rel="stylesheet" href="/static/css/console.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XUMOTION — Systems Console</title>
+<link rel="stylesheet" href="/css/console.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="logo">XUMOTION</div>
-            <ul>
-                <li class="active" data-panel="overview">Overview</li>
-                <li data-panel="agents">Agents</li>
-                <li data-panel="modules">Modules</li>
-                <li data-panel="log">Event Log</li>
-                <li data-panel="settings">Settings</li>
-            </ul>
-            <div class="sidebar-footer">
-                <div class="node-status">NODE: ACTIVE</div>
-                <div class="core-count">CORE: 5</div>
-            </div>
-        </nav>
 
-        <!-- Main Panel -->
-        <main id="main-panel">
-            <!-- Status Strip -->
-            <div id="status-strip">
-                <div class="stat-card">SYSTEM ONLINE</div>
-                <div class="stat-card">SECTOR <span id="stage">--</span></div>
-                <div class="stat-card">RANK <span id="rank">--</span></div>
-                <div class="stat-card">UPTIME <span id="uptime">--</span></div>
-            </div>
-
-            <!-- Hero: Current Target -->
-            <div id="target-panel">
-                <div class="target-header">
-                    <span id="entity-name">---</span>
-                    <span id="entity-rarity" class="badge">---</span>
-                </div>
-                <div id="integrity-bar">
-                    <div id="integrity-fill"></div>
-                    <span id="integrity-text">---/---</span>
-                </div>
-                <div class="target-rewards">
-                    <span>Credits: +<span id="target-gold">--</span></span>
-                    <span>EXP: +<span id="target-exp">--</span></span>
-                </div>
-                <div class="action-buttons">
-                    <button onclick="sendCommand('enhance atk')">ENHANCE ATK</button>
-                    <button onclick="sendCommand('deploy')">DEPLOY</button>
-                    <button onclick="sendCommand('auto on')">AUTO</button>
-                    <button onclick="sendCommand('checkpoint')">CHECKPOINT</button>
-                </div>
-            </div>
-
-            <!-- Operator Stats Grid -->
-            <div id="operator-grid">
-                <div class="metric">ATK <span id="atk">--</span></div>
-                <div class="metric">DPS <span id="dps">--</span></div>
-                <div class="metric">DEF <span id="def">--</span></div>
-                <div class="metric">CRIT <span id="crit">--</span></div>
-                <div class="metric">HP <span id="hp">--</span></div>
-                <div class="metric">AGENTS <span id="agents">--</span></div>
-                <div class="metric">MODULES <span id="modules">--</span></div>
-                <div class="metric">CREDITS <span id="credits">--</span></div>
-            </div>
-        </main>
-
-        <!-- Right Panel: Event Feed -->
-        <aside id="right-panel">
-            <h3>EVENT STREAM</h3>
-            <div id="event-feed"></div>
-        </aside>
+<div id="app">
+  <!-- TOP BAR -->
+  <header id="top-bar">
+    <div class="resource">
+      <span class="res-icon">⛁</span>
+      <span class="res-label">CREDITS</span>
+      <span id="credits-value" class="res-value">0</span>
     </div>
+    <div class="resource">
+      <span class="res-icon">✦</span>
+      <span class="res-label">SHARDS</span>
+      <span id="shards-value" class="res-value">0</span>
+    </div>
+    <div class="wallet-badge">
+      <span>⛫</span>
+    </div>
+    <div class="notification-bell">
+      <span>⍫</span>
+      <span id="event-dot" class="dot hidden"></span>
+    </div>
+  </header>
 
-    <link rel="stylesheet" href="/css/console.css">
-    <script src="/js/dashboard.js"></script>
-    <script src="/js/feed.js"></script>
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+    <!-- Dashboard Tab -->
+    <section id="tab-dashboard" class="tab-content">
+      <div class="card sector-card">
+        <div class="flex-between">
+          <div>
+            <div class="label">Current Sector</div>
+            <div id="sector-name" class="value">—</div>
+          </div>
+          <div class="text-right">
+            <div class="label">Target Entity</div>
+            <div id="entity-name" class="value red">—</div>
+          </div>
+        </div>
+        <div class="integrity-section">
+          <div class="flex-between">
+            <span class="label">Integrity</span>
+            <span id="integrity-pct" class="green">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="integrity-fill" class="fill green-bg"></div>
+          </div>
+        </div>
+        <div class="rewards">
+          <span>+<span id="target-gold">0</span> CR</span>
+          <span><span id="target-exp">0</span> EXP</span>
+        </div>
+        <div class="actions grid-2">
+          <button class="btn-outline" onclick="sendCommand('enhance atk')">ENHANCE</button>
+          <button class="btn-success" onclick="sendCommand('deploy')">DEPLOY</button>
+        </div>
+      </div>
+
+      <div class="stats-grid grid-2">
+        <div class="stat-card" onclick="sendCommand('enhance atk')">
+          <span class="icon">⚔</span>
+          <div>ATK</div>
+          <div id="stat-atk">0</div>
+        </div>
+        <div class="stat-card" onclick="sendCommand('enhance defense')">
+          <span class="icon">⛊</span>
+          <div>DEF</div>
+          <div id="stat-def">0</div>
+        </div>
+        <div class="stat-card" onclick="sendCommand('enhance max_hp')">
+          <span class="icon">♥</span>
+          <div>HP</div>
+          <div id="stat-hp">0/0</div>
+        </div>
+        <div class="stat-card" onclick="sendCommand('enhance crit_rate')">
+          <span class="icon">✦</span>
+          <div>CRIT</div>
+          <div id="stat-crit">0%</div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="btn-outline sm" onclick="sendCommand('cycle')">CLAIM</button>
+        <button class="btn-outline sm" onclick="sendCommand('recompile')">RECOMPILE</button>
+        <button class="btn-outline sm" onclick="sendCommand('auto on')">AUTO</button>
+        <button class="btn-outline sm" onclick="sendCommand('checkpoint')">CHECKPOINT</button>
+      </div>
+
+      <div class="event-feed">
+        <h3>Live Operations</h3>
+        <div id="event-list"></div>
+      </div>
+    </section>
+
+    <!-- Agents Tab -->
+    <section id="tab-agents" class="tab-content hidden">
+      <div id="agents-list"></div>
+      <div class="mt-4">
+        <button class="btn-primary full-width" onclick="sendCommand('deploy')">DEPLOY NEW AGENT</button>
+      </div>
+    </section>
+
+    <!-- Modules Tab -->
+    <section id="tab-modules" class="tab-content hidden">
+      <div class="card">
+        <div class="label">MODULE BAY</div>
+        <div id="modules-count" class="value mb-2">0 slots used</div>
+        <div id="modules-list"></div>
+      </div>
+    </section>
+
+    <!-- Progression Tab -->
+    <section id="tab-progression" class="tab-content hidden">
+      <div class="card">
+        <div class="label">RANK</div>
+        <div id="rank-value" class="value">0</div>
+        <div class="progress-bar mt-2">
+          <div id="exp-fill" class="fill amber-bg"></div>
+        </div>
+        <div id="exp-text" class="text-xs mt-1">0/0 EXP</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-tab="dashboard">⌂</button>
+    <button class="nav-item" data-tab="agents">⛁</button>
+    <button class="nav-item" data-tab="modules">⛊</button>
+    <button class="nav-item" data-tab="progression">⛋</button>
+    <button class="nav-item" onclick="sendCommand('help')">?</button>
+  </nav>
+</div>
+
+<script src="/js/dashboard.js"></script>
 </body>
 </html>

@@ -27,6 +27,8 @@ def load_upgrades() -> dict:
 def load_pets() -> dict:
     return _load_json("agents.json")
 
+def load_agents() -> dict:
+    return _load_json("agents.json")
 
 def load_progression() -> dict:
     return _load_json("progression.json")

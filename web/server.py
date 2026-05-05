@@ -56,8 +56,20 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
                     "crit_rate": p.crit_rate,
                     "crit_damage": p.crit_damage,
                     "gold": p.gold,
-                    "agents": [{"name": a.name, "dps": a.dps} for a in p.agents],
+                    "shards": p.core_points,          # shards sebagai core_points
+                    "agents": [
+                        {
+                            "id": i + 1,
+                            "name": a.name,
+                            "tier": a.tier,
+                            "level": a.level,
+                            "dps": a.dps,
+                            "deployed": a.deployed
+                        } for i, a in enumerate(p.agents)
+                    ],
                     "inventory_count": len(p.inventory),
+                    "max_agent_slots": p.max_agent_slots,
+                    "deployed_count": p.get_deployed_count(),
                 },
                 "enemy": {
                     "name": e.name,
