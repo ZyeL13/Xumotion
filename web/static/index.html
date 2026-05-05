@@ -112,11 +112,13 @@
                 <div class="bar-fill bar-red" id="integrity-bar" style="width:34%"></div>
               </div>
             </div>
+  
             <div class="action-row">
-              <button class="btn btn-green" onclick="openModal('enhance')">⚡ ENHANCE</button>
-              <button class="btn btn-blue" onclick="openModal('deploy')">▶ DEPLOY</button>
-              <button class="btn btn-amber" id="auto-btn" onclick="toggleAuto()">⟳ AUTO</button>
-              <button class="btn btn-muted" onclick="openModal('checkpoint')">⊠ CHECKPOINT</button>
+              <button class="btn btn-green" data-command="enhance atk">ENHANCE</button>
+              <button class="btn btn-blue" data-command="deploy">DEPLOY</button>
+              <button class="btn btn-amber" id="auto-btn" data-command="auto">AUTO</button>
+              <button class="btn btn-muted" data-command="checkpoint">CHECKPOINT</button>
+              <button class="btn btn-red" data-command="restore">RESTORE</button>
             </div>
           </div>
 

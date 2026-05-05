@@ -1,4 +1,4 @@
-import random  # nosec B311 — used for gameplay randomness only
+import random
 import time
 from systems import progression
 from game.event_logger import event_logger
@@ -10,9 +10,13 @@ def tick_combat(state):
     player = state.player
     enemy = state.enemy
 
+    # Jika operator mati, tidak ada proses combat
+    if getattr(state, "player_dead", False):
+        return
+
     # Player deal damage
     damage = combat_damage(player.atk, player.dps, enemy.defense)
-    damage = apply_crit(damage, player.crit_rate, player.crit_damage)  # nosec B311
+    damage = apply_crit(damage, player.crit_rate, player.crit_damage)
     enemy.hp = max(0, enemy.hp - damage)
 
     # Enemy attacks back (only if enemy alive)
@@ -22,15 +26,14 @@ def tick_combat(state):
 
         # Check player death
         if player.hp <= 0:
-            if not getattr(state, "player_dead", False):
-                state.player_dead = True
-                event_logger.emit("player_died", "OPERATOR DOWN — Type /restore to continue")
-            return
+            state.player_dead = True
+            event_logger.emit("player_died", "OPERATOR DOWN — Type /restore to continue")
+            return  # hentikan pemrosesan kematian enemy
 
     # Prime Instance spawn (every 5 minutes real time)
     if not hasattr(state, "prime_timer"):
         state.prime_timer = time.time()
-    if time.time() - state.prime_timer >= 300:  # 5 minutes
+    if time.time() - state.prime_timer >= 300:
         state.prime_timer = time.time()
         from models.enemy import Enemy
         state.enemy = Enemy.generate_prime(state.current_stage)
@@ -46,7 +49,7 @@ def tick_combat(state):
         event_logger.emit("target_purged", f"TARGET PURGED: {enemy.name} | +{enemy.reward_gold} CREDITS +{enemy.reward_exp} EXP")
 
         # Loot drop (50%)
-        if random.random() < 0.5:  # nosec B311 — gameplay loot roll
+        if random.random() < 0.5:
             from systems.loot import generate_module
             loot = generate_module(state.current_stage)
             player.inventory.append(loot)
@@ -60,15 +63,8 @@ def tick_combat(state):
         # Check achievements
         check_and_unlock(state)
 
-        # Advance sector
-        if not getattr(state, "player_dead", False):
-            state.current_stage += 1
-            from models.enemy import Enemy
-            state.enemy = Enemy.generate(state.current_stage)
-            event_logger.emit("new_target", f"SECTOR {state.current_stage}: {state.enemy.name}")
-
-    # Auto-restore if dead
-    if getattr(state, "player_dead", False):
-        player.hp = player.effective_max_hp
-        state.player_dead = False
-        event_logger.emit("restore", "AUTO-RESTORE: Operator back online")
+        # Advance sector (hanya jika operator hidup)
+        state.current_stage += 1
+        from models.enemy import Enemy
+        state.enemy = Enemy.generate(state.current_stage)
+        event_logger.emit("new_target", f"SECTOR {state.current_stage}: {state.enemy.name}")

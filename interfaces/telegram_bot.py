@@ -307,6 +307,12 @@ class TelegramBot:
             response = process_command(self.state, "help")
             await update.message.reply_text(response)
 
+        async def die(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            response = process_command(self.state, "die")
+            await update.message.reply_text(response)
+
+        self.app.add_handler(CommandHandler("die", die))
+
         # Register all handlers
         self.app.add_handler(CommandHandler("start", start))
         self.app.add_handler(CommandHandler("stats", stats))

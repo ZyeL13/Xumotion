@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "player": {
+    "level": 21,
+    "exp": 30,
+    "hp": 0,
+    "max_hp": 318,
+    "atk": 73,
+    "defense": 5,
+    "crit_rate": 0.072,
+    "crit_damage": 1.5,
+    "gold": 76343,
+    "gems": 0,
+    "dps": 3,
+    "inventory": [
+      {
+        "name": "Relay Module [Common]",
+        "slot": "injector",
+        "rarity": "common",
+        "atk_bonus": 4,
+        "def_bonus": 0,
+        "hp_bonus": 0,
+        "crit_rate_bonus": 0.013,
+        "installed": true
+      },
+      {
+        "name": "Proxy Node [Uncommon]",
+        "slot": "cache",
+        "rarity": "uncommon",
+        "atk_bonus": 4,
+        "def_bonus": 0,
+        "hp_bonus": 9,
+        "crit_rate_bonus": 0.009,
+        "installed": true
+      },
+      {
+        "name": "Cache Layer [Common]",
+        "slot": "barrier",
+        "rarity": "common",
+        "atk_bonus": 0,
+        "def_bonus": 4,
+        "hp_bonus": 9,
+        "crit_rate_bonus": 0.0,
+        "installed": true
+      },
+      {
+        "name": "Echo Unit [Common]",
+        "slot": "cache",
+        "rarity": "common",
+        "atk_bonus": 2,
+        "def_bonus": 0,
+        "hp_bonus": 3,
+        "crit_rate_bonus": 0.01,
+        "installed": false
+      },
+      {
+        "name": "Runtime Patch [Uncommon]",
+        "slot": "barrier",
+        "rarity": "uncommon",
+        "atk_bonus": 0,
+        "def_bonus": 3,
+        "hp_bonus": 9,
+        "crit_rate_bonus": 0.0,
+        "installed": false
+      },
+      {
+        "name": "Cache Layer [Common]",
+        "slot": "barrier",
+        "rarity": "common",
+        "atk_bonus": 0,
+        "def_bonus": 2,
+        "hp_bonus": 10,
+        "crit_rate_bonus": 0.0,
+        "installed": false
+      },
+      {
+        "name": "Echo Unit [Common]",
+        "slot": "cache",
+        "rarity": "common",
+        "atk_bonus": 3,
+        "def_bonus": 0,
+        "hp_bonus": 7,
+        "crit_rate_bonus": 0.009,
+        "installed": false
+      },
+      {
+        "name": "Proxy Node [Uncommon]",
+        "slot": "cache",
+        "rarity": "uncommon",
+        "atk_bonus": 4,
+        "def_bonus": 0,
+        "hp_bonus": 10,
+        "crit_rate_bonus": 0.018,
+        "installed": false
+      },
+      {
+        "name": "Cache Layer [Common]",
+        "slot": "barrier",
+        "rarity": "common",
+        "atk_bonus": 0,
+        "def_bonus": 2,
+        "hp_bonus": 10,
+        "crit_rate_bonus": 0.0,
+        "installed": false
+      }
+    ],
+    "agents": [
+      {
+        "name": "Echo Unit #1",
+        "tier": "common",
+        "dps": 3,
+        "base_dps": 3,
+        "level": 1,
+        "deployed": true
+      }
+    ],
+    "atk_upgrade_lvl": 0,
+    "def_upgrade_lvl": 0,
+    "hp_upgrade_lvl": 0,
+    "crit_upgrade_lvl": 0,
+    "core_points": 0,
+    "core_spent": 0,
+    "recompile_count": 0,
+    "auto_enhance": false
+  },
+  "current_stage": 33,
+  "kills_in_stage": 44,
+  "last_save": 1777996617.2133543,
+  "enemy": {
+    "name": "Validator Prime PRIME",
+    "hp": 8396,
+    "max_hp": 10068,
+    "atk": 57,
+    "defense": 0,
+    "reward_gold": 16182,
+    "reward_exp": 1131,
+    "rarity": "prime"
+  }
+}

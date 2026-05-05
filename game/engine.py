@@ -109,7 +109,7 @@ def process_command(state: GameState, cmd: str) -> str:
 
         elif action in ("install", "equip", "eq"):
             if len(parts) < 2:
-                return auto_install_best(player)
+                return auto_install_best(state)
             try:
                 index = int(parts[1])
                 return install_module(player, index)
@@ -163,15 +163,15 @@ def process_command(state: GameState, cmd: str) -> str:
             event_logger.emit("player_died", "OPERATOR DOWN — Type /restore to continue")
             return "OPERATOR DOWN. Type /restore to continue."
 
-        elif action in ("restore", "revive", "next"):
+        elif action in ("restore", "revive"):
             if getattr(state, "player_dead", False):
                 player.hp = player.effective_max_hp
                 state.player_dead = False
-                state.current_stage += 1
+                # Reset enemy di stage yang sama agar tidak langsung maju
                 from models.enemy import Enemy
                 state.enemy = Enemy.generate(state.current_stage)
-                event_logger.emit("restore", f"OPERATOR RESTORED — Sector {state.current_stage}")
-                return f"OPERATOR RESTORED. Sector {state.current_stage}."
+                event_logger.emit("restore", "OPERATOR RESTORED — Retry current sector")
+                return "OPERATOR RESTORED. Sector not advanced. Enemy reset."
             return "Operator is active. No restoration needed."
 
         elif action in ("modules", "inv", "inventory", "i"):

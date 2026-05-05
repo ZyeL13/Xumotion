@@ -11,11 +11,11 @@ from models.enemy import Enemy
 from interfaces.telegram_bot import TelegramBot
 from game.offline import calculate_offline_reward
 from systems.daily import can_claim
-from web.server import start_web
+# from web.server import start_web
 
 
 def main():
-    state = load_game()
+#    state = load_game()
     if state is None:
         state = GameState(
             player=Player(),

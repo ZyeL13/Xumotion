@@ -981,3 +981,286 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 /* HIDDEN */
 .hidden { display: none !important; }
+
+/* ================================================================
+   MOBILE OPTIMIZATION (≤600px)
+   ================================================================ */
+@media (max-width: 600px) {
+  /* --- Layout --- */
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+  .sector-panel {
+    grid-column: span 1;
+  }
+  .grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .grid-2 {
+    gap: 8px;
+  }
+
+  /* --- TopBar Compact --- */
+  .topbar {
+    padding: 0 8px;
+    height: 48px;
+    gap: 4px;
+  }
+  .topbar-stat {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  .topbar-stat .label {
+    display: none;
+  }
+  .wallet-pill {
+    display: none;
+  }
+  .topbar-right {
+    gap: 4px;
+  }
+  .btn-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  /* --- Content Spacing --- */
+  .content {
+    padding: 10px;
+  }
+
+  /* --- Sector Panel --- */
+  .sector-panel {
+    padding: 12px;
+  }
+  .sector-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sector-info h2 {
+    font-size: 18px;
+  }
+  .sector-tag {
+    align-self: flex-start;
+  }
+  .action-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .action-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Stats Grid --- */
+  .stat-box {
+    padding: 8px 10px;
+  }
+  .stat-box .val {
+    font-size: 16px;
+  }
+
+  /* --- Agents Grid --- */
+  .agents-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .agent-card {
+    padding: 10px;
+  }
+  .agent-name {
+    font-size: 13px;
+  }
+  .agent-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .agent-btns {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .agent-btns .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Modules Grid --- */
+  .modules-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+  }
+  .module-card {
+    padding: 10px;
+  }
+  .module-btns {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .module-btns .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Filter Bar --- */
+  .filter-bar {
+    gap: 4px;
+  }
+  .filter-chip {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  /* --- Event Cards --- */
+  .event-card {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .event-detail {
+    font-size: 11px;
+  }
+
+  /* --- Modal Bottom Sheet --- */
+  .modal-overlay {
+    align-items: flex-end;
+  }
+  .modal {
+    max-width: 100%;
+    border-radius: var(--r) var(--r) 0 0;
+    padding: 16px;
+    transform: translateY(100%);
+    box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+  }
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  /* --- Progression --- */
+  .prog-header {
+    padding: 16px;
+  }
+  .rank-display {
+    font-size: 28px;
+  }
+
+  /* --- Bottom Nav --- */
+  .bottom-nav {
+    padding: 6px 0;
+  }
+  .bnav-item {
+    padding: 4px 8px;
+    font-size: 10px;
+    gap: 2px;
+  }
+  .bnav-item .ic {
+    font-size: 16px;
+  }
+
+  /* --- AI Console --- */
+  .ai-header {
+    padding: 8px 0 6px;
+    gap: 8px;
+  }
+  .ai-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  .chat-messages {
+    gap: 8px;
+  }
+  .msg-bubble {
+    max-width: 88%;
+    font-size: 12px;
+  }
+  .quick-prompts {
+    gap: 4px;
+    padding: 6px 0;
+  }
+  .qprompt {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  .chat-input {
+    font-size: 13px;
+    min-height: 34px;
+    padding: 7px 10px;
+  }
+  .chat-send {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* --- Settings --- */
+  .settings-row {
+    padding: 10px 12px;
+  }
+  .settings-label {
+    font-size: 13px;
+  }
+
+  /* --- Touch Targets --- */
+  .btn, .btn-sm, .btn-icon, .nav-item, .bnav-item,
+  .filter-chip, .qprompt, .module-card, .agent-card {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* --- Inventory --- */
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ================================================================
+   TABLET TUNING (601px–1024px)
+   ================================================================ */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .dash-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sector-panel {
+    grid-column: span 2;
+  }
+  .agents-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  .modules-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+/* ================================================================
+   NOTCH / SAFE AREA (iPhone X+)
+   ================================================================ */
+@supports (padding: max(0px)) {
+  .bottom-nav {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .content {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .topbar {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+}
+
+/* ================================================================
+   REDUCED MOTION
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .bar-fill::after {
+    animation: none;
+  }
+  .stream-cursor {
+    animation: none;
+  }
+}

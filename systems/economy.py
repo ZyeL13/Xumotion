@@ -65,6 +65,7 @@ def deploy_agent(state, agent_id: str = None) -> str:
     # Create agent
     player.gold -= cost
     new_agent = Agent(
+        id=Agent.generate_id(),
         name=f"{agent_def.name} #{num_owned + 1}",
         tier=agent_def.tier,
         dps=agent_def.base_dps,
@@ -171,23 +172,31 @@ def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
     """Merge 3 agents of the same tier into one higher-tier agent.
     Usage: merge <unit_name> <id1> <id2> <id3>
     - unit_name: filter by agent name (e.g., "Echo", "Cache"), or None for old format
-    - id1, id2, id3: agent name, hashtag number, or list index (1-based)
+    - id1, id2, id3: agent ID (hex), name, hashtag number, or list index (1-based)
     """
     player = state.player
     
     if len(agent_ids) != 3:
         return "MERGE requires exactly 3 agents of the same tier."
     
-    # Cari agent berdasarkan id (nama lengkap, hashtag, atau indeks list)
+    # Cari agent berdasarkan id (ID, nama lengkap, hashtag, atau indeks list)
     targets: list = []
     for aid in agent_ids:
         found = None
         
+        # Coba 0: cocokkan ID persis (case-insensitive)  <-- TAMBAHAN
+        if not found:
+            for agent in player.agents:
+                if aid.upper() == agent.id.upper():
+                    found = agent
+                    break
+        
         # Coba 1: cocokkan nama lengkap (case-insensitive)
-        for agent in player.agents:
-            if aid.lower() == agent.name.lower():
-                found = agent
-                break
+        if not found:
+            for agent in player.agents:
+                if aid.lower() == agent.name.lower():
+                    found = agent
+                    break
         
         # Coba 2: cocokkan nomor hashtag di belakang #
         if not found:
@@ -204,7 +213,7 @@ def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
                 found = player.agents[idx - 1]  # convert 1-based to 0-based
         
         if not found:
-            return f"Agent '{aid}' not found. Use agent name, hashtag number, or list index from /modules."
+            return f"Agent '{aid}' not found. Use agent name, hashtag number, list index, or agent ID."
         if found in targets:
             return f"Duplicate agent '{aid}'."
         targets.append(found)
@@ -239,7 +248,6 @@ def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
     
     # Hapus 3 agent
     for agent in targets:
-        # jika deployed, lepas dulu
         if agent.deployed:
             agent.deployed = False
         player.agents.remove(agent)
@@ -247,6 +255,7 @@ def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
     # Buat agent baru
     num_owned = sum(1 for a in player.agents if a.name.startswith(next_def.name))
     new_agent = Agent(
+        id=Agent.generate_id(),
         name=f"{next_def.name} #{num_owned + 1}",
         tier=next_tier,
         dps=next_def.base_dps,
@@ -256,10 +265,55 @@ def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
     )
     player.agents.append(new_agent)
     
-    # Auto-deploy jika ada slot
     if player.get_available_slots() > 0:
         new_agent.deployed = True
     
     event_logger.emit("agent_merged", f"MERGE: {targets[0].name}+{targets[1].name}+{targets[2].name} → {new_agent.name} ({new_agent.tier})")
     status = "auto-deployed" if new_agent.deployed else "in bay"
     return f"MERGE COMPLETE: {new_agent.name} ({new_agent.tier}, DPS {new_agent.dps}) {status}."
+
+def auto_merge(state) -> str:
+    """Gabung 3 agent tier sama yang nggak deployed. Return pesan atau string kosong."""
+    player = state.player
+    
+    tier_groups = {}
+    for agent in player.agents:
+        tier = agent.tier
+        if tier not in tier_groups:
+            tier_groups[tier] = []
+        tier_groups[tier].append(agent)
+    
+    for tier in ("common", "rare", "epic"):
+        agents = tier_groups.get(tier, [])
+        if len(agents) >= 3:
+            agents_sorted = sorted(agents, key=lambda a: a.deployed)
+            a1, a2, a3 = agents_sorted[:3]
+            
+            # Gunakan ID unik agent
+            result = merge_agents(state, "", a1.id, a2.id, a3.id)
+            return result
+    
+    return ""
+
+def auto_deploy_best(state) -> str:
+    """Isi slot kosong dengan agen terbaik yang belum deployed."""
+    player = state.player
+    available_slots = player.get_available_slots()
+    if available_slots <= 0:
+        return ""
+
+    # Kumpulkan agen yang tidak deployed, urutkan berdasarkan DPS tertinggi
+    inactive = [a for a in player.agents if not a.deployed]
+    if not inactive:
+        return ""
+
+    inactive.sort(key=lambda a: a.dps, reverse=True)
+    deployed_list = []
+    for agent in inactive[:available_slots]:
+        agent.deployed = True
+        deployed_list.append(agent.name)
+        event_logger.emit("agent_deployed", f"AGENT DEPLOYED: {agent.name} (auto)")
+
+    if deployed_list:
+        return f"AUTO-DEPLOYED: " + ", ".join(deployed_list) + f" [{player.get_deployed_count()}/{player.max_agent_slots} slots]"
+    return ""

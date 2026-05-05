@@ -169,9 +169,13 @@ async def run_ws_server():
 
 
 def run_http_server():
+    import socket
     server = http.server.HTTPServer((WEB_HOST, WEB_PORT), ConsoleHandler)
+    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.timeout = 1
     print(f"Web dashboard: http://{WEB_HOST}:{WEB_PORT}")
-    server.serve_forever()
+    while game_state is not None and game_state.running:
+        server.handle_request()
 
 
 def start_web(state):

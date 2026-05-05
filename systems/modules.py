@@ -65,74 +65,79 @@ def uninstall_slot(player, slot_name: str) -> str:
     return f"No module installed in {slot.value}."
 
 
-def auto_install_best(player) -> str:
+def auto_install_best(state) -> str:
     """
-    Auto-install best modules in all slots.
-    Scraps all remaining uninstalled modules for credits.
-    Returns summary message.
+    Auto-merge agents, auto-deploy best agents ke slot kosong,
+    lalu auto-install best modules di semua slot, dan scrap sisanya.
     """
+    from systems.economy import auto_merge, auto_deploy_best
+
+    # 1. Auto-merge agents (3 tier sama → 1 tier lebih tinggi)
+    merge_msg = auto_merge(state)
+
+    # 2. Auto-deploy agents dengan DPS tertinggi ke slot yang kosong
+    deploy_msg = auto_deploy_best(state)
+
+    player = state.player
+    install_result = ""
+
+    # 3. Auto-install modules (kode asli kamu)
     if not player.inventory:
-        return "MODULE BAY EMPTY. Nothing to install."
-
-    messages = []
-    total_scrapped = 0
-    scrapped_count = 0
-
-    # Process each slot
-    for slot in (Slot.INJECTOR, Slot.BARRIER, Slot.CACHE):
-        # Find all modules for this slot
-        slot_modules = [m for m in player.inventory if m.slot == slot]
-
-        if not slot_modules:
-            continue
-
-        # Find currently installed in this slot
-        current = None
-        for m in player.inventory:
-            if m.installed and m.slot == slot:
-                current = m
-                break
-
-        # Find best module in this slot
-        best = max(slot_modules, key=_module_score)
-
-        # If best is current, skip (already optimal)
-        if current and best is current:
-            continue
-
-        # Uninstall current if exists
-        if current:
-            current.installed = False
-            _remove_bonuses(player, current)
-            messages.append(f"Uninstalled: {current.name}")
-
-        # Install best
-        best.installed = True
-        _apply_bonuses(player, best)
-        messages.append(f"Installed: {best.name} ({slot.value})")
-
-    # Scrap all remaining uninstalled modules
-    to_keep = [m for m in player.inventory if m.installed]
-    to_scrap = [m for m in player.inventory if not m.installed]
-
-    for mod in to_scrap:
-        value = _scrap_value(mod)
-        player.gold += value
-        total_scrapped += value
-        scrapped_count += 1
-
-    # Replace inventory with only installed modules
-    player.inventory = to_keep
-
-    if messages:
-        result = "\n".join(messages)
+        install_result = "MODULE BAY EMPTY. Nothing to install."
     else:
-        result = "All slots already optimal."
+        messages = []
+        total_scrapped = 0
+        scrapped_count = 0
 
-    if scrapped_count > 0:
-        result += f"\n\nScrapped {scrapped_count} modules. +{total_scrapped} credits."
+        for slot in (Slot.INJECTOR, Slot.BARRIER, Slot.CACHE):
+            slot_modules = [m for m in player.inventory if m.slot == slot]
+            if not slot_modules:
+                continue
 
-    return result
+            current = next((m for m in player.inventory if m.installed and m.slot == slot), None)
+            best = max(slot_modules, key=_module_score)
+
+            if current and best is current:
+                continue
+
+            if current:
+                current.installed = False
+                _remove_bonuses(player, current)
+                messages.append(f"Uninstalled: {current.name}")
+
+            best.installed = True
+            _apply_bonuses(player, best)
+            messages.append(f"Installed: {best.name} ({slot.value})")
+
+        to_keep = [m for m in player.inventory if m.installed]
+        to_scrap = [m for m in player.inventory if not m.installed]
+
+        for mod in to_scrap:
+            value = _scrap_value(mod)
+            player.gold += value
+            total_scrapped += value
+            scrapped_count += 1
+
+        player.inventory = to_keep
+
+        if messages:
+            install_result = "\n".join(messages)
+        else:
+            install_result = "All slots already optimal."
+
+        if scrapped_count > 0:
+            install_result += f"\n\nScrapped {scrapped_count} modules. +{total_scrapped} credits."
+
+    # Gabungkan semua pesan
+    final_parts = []
+    if merge_msg:
+        final_parts.append(merge_msg)
+    if deploy_msg:
+        final_parts.append(deploy_msg)
+    if install_result:
+        final_parts.append(install_result)
+
+    return "\n\n".join(final_parts) or "All systems optimal."
 
 
 def _apply_bonuses(player, module: Module):
