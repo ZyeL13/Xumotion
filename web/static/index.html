@@ -2,149 +2,422 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>XUMOTION — Systems Console</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/console.css">
 </head>
 <body>
 
-<div id="app">
-  <!-- TOP BAR -->
-  <header id="top-bar">
-    <div class="resource">
-      <span class="res-icon">⛁</span>
-      <span class="res-label">CREDITS</span>
-      <span id="credits-value" class="res-value">0</span>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">XU<span>MOTION</span></div>
+      <div class="logo-sub">SYSTEMS CONSOLE v2.4.1</div>
     </div>
-    <div class="resource">
-      <span class="res-icon">✦</span>
-      <span class="res-label">SHARDS</span>
-      <span id="shards-value" class="res-value">0</span>
+    <div class="nav-list">
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">⬡</span> Dashboard
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="agents">
+        <span class="nav-icon">◈</span> Agents
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="modules">
+        <span class="nav-icon">◫</span> Modules
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="inventory">
+        <span class="nav-icon">▦</span> Inventory
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="progression">
+        <span class="nav-icon">◉</span> Progression
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="settings">
+        <span class="nav-icon">⊙</span> Settings
+        <span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-page="ai-console" style="margin-top:8px;border-color:rgba(126,231,135,0.15);background:rgba(126,231,135,0.04)">
+        <span class="nav-icon">◎</span> NEXUS AI
+        <span class="nav-dot"></span>
+      </div>
     </div>
-    <div class="wallet-badge">
-      <span>⛫</span>
+    <div class="sidebar-footer">
+      <div class="sys-status">
+        <span class="sys-dot"></span>
+        SYS NOMINAL
+      </div>
     </div>
-    <div class="notification-bell">
-      <span>⍫</span>
-      <span id="event-dot" class="dot hidden"></span>
-    </div>
-  </header>
-
-  <!-- MAIN CONTENT -->
-  <main id="main-content">
-    <!-- Dashboard Tab -->
-    <section id="tab-dashboard" class="tab-content">
-      <div class="card sector-card">
-        <div class="flex-between">
-          <div>
-            <div class="label">Current Sector</div>
-            <div id="sector-name" class="value">—</div>
-          </div>
-          <div class="text-right">
-            <div class="label">Target Entity</div>
-            <div id="entity-name" class="value red">—</div>
-          </div>
-        </div>
-        <div class="integrity-section">
-          <div class="flex-between">
-            <span class="label">Integrity</span>
-            <span id="integrity-pct" class="green">0%</span>
-          </div>
-          <div class="progress-bar">
-            <div id="integrity-fill" class="fill green-bg"></div>
-          </div>
-        </div>
-        <div class="rewards">
-          <span>+<span id="target-gold">0</span> CR</span>
-          <span><span id="target-exp">0</span> EXP</span>
-        </div>
-        <div class="actions grid-2">
-          <button class="btn-outline" data-command="enhance atk">ENHANCE</button>
-          <button class="btn-success" data-command="deploy">DEPLOY</button>
-        </div>
-      </div>
-
-      <div class="stats-grid grid-2">
-        <div class="stat-card" data-command="enhance atk">
-          <span class="icon">⚔</span>
-          <div>ATK</div>
-          <div id="stat-atk">0</div>
-        </div>
-        <div class="stat-card" data-command="enhance defense">
-          <span class="icon">⛊</span>
-          <div>DEF</div>
-          <div id="stat-def">0</div>
-        </div>
-        <div class="stat-card" data-command="enhance max_hp">
-          <span class="icon">♥</span>
-          <div>HP</div>
-          <div id="stat-hp">0/0</div>
-        </div>
-        <div class="stat-card" data-command="enhance crit_rate">
-          <span class="icon">✦</span>
-          <div>CRIT</div>
-          <div id="stat-crit">0%</div>
-        </div>
-      </div>
-
-      <div class="quick-actions">
-        <button class="btn-outline sm" data-command="cycle">CLAIM</button>
-        <button class="btn-outline sm" data-command="recompile">RECOMPILE</button>
-        <button class="btn-outline sm" data-command="auto on">AUTO</button>
-        <button class="btn-outline sm" data-command="checkpoint">CHECKPOINT</button>
-      </div>
-
-      <!-- Global Status Bar -->
-      <div id="status-bar" class="status-bar hidden"></div>
-
-      <!-- Operation Stream -->
-      <div id="operation-stream" class="mt-2 mb-2"></div>
-
-      <!-- Live Operations (WebSocket event feed) -->
-      <div class="event-feed">
-        <h3>Live Operations</h3>
-        <div id="event-list"></div>
-      </div>
-    </section>
-
-    <!-- Agents Tab -->
-    <section id="tab-agents" class="tab-content hidden">
-      <div id="agents-list"></div>
-      <div class="mt-4">
-        <button class="btn-primary full-width" data-command="deploy">DEPLOY NEW AGENT</button>
-      </div>
-    </section>
-
-    <!-- Modules Tab -->
-    <section id="tab-modules" class="tab-content hidden">
-      <div class="card">
-        <div class="label">MODULE BAY</div>
-        <div id="modules-count" class="value mb-2">0 slots used</div>
-        <div id="modules-list"></div>
-      </div>
-    </section>
-
-    <!-- Progression Tab -->
-    <section id="tab-progression" class="tab-content hidden">
-      <div class="card">
-        <div class="label">RANK</div>
-        <div id="rank-value" class="value">0</div>
-        <div class="progress-bar mt-2">
-          <div id="exp-fill" class="fill amber-bg"></div>
-        </div>
-        <div id="exp-text" class="text-xs mt-1">0/0 EXP</div>
-      </div>
-    </section>
-  </main>
-
-  <!-- BOTTOM NAV -->
-  <nav id="bottom-nav">
-    <button class="nav-item active" data-tab="dashboard">⌂</button>
-    <button class="nav-item" data-tab="agents">⛁</button>
-    <button class="nav-item" data-tab="modules">⛊</button>
-    <button class="nav-item" data-tab="progression">⛋</button>
-    <button class="nav-item" data-command="help">?</button>
   </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-stat">
+        <span class="label">CR</span>
+        <span class="val val-amber" id="cr-val">12,450</span>
+      </div>
+      <div class="topbar-stat">
+        <span class="label">SH</span>
+        <span class="val val-blue" id="sh-val">891</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-stat">
+        <span class="label">RANK</span>
+        <span class="val val-green">WRAITH-III</span>
+      </div>
+      <div class="topbar-right">
+        <div class="wallet-pill" title="Wallet connected">
+          <span class="wallet-dot"></span>
+          <span>0x4f…8c3a</span>
+        </div>
+        <div class="btn-icon" title="Notifications" onclick="openModal('notif')">
+          🔔
+          <span class="notif-badge">3</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="content" id="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <div class="page active" id="page-dashboard">
+        <div class="dash-grid">
+
+          <!-- SECTOR PANEL -->
+          <div class="sector-panel">
+            <div class="sector-header">
+              <div class="sector-info">
+                <h2 id="sector-name">NEXUS-7 / GRID ALPHA</h2>
+                <div class="sub">TARGET: <span id="entity-name">CIPHER SYNDICATE NODE</span> · BREACH WINDOW: 14m 22s</div>
+              </div>
+              <div class="sector-tag">ACTIVE RAID</div>
+            </div>
+            <div class="integrity-block">
+              <div class="integrity-label">
+                <span>TARGET INTEGRITY</span>
+                <span class="pct">34%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill bar-red" id="integrity-bar" style="width:34%"></div>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-green" onclick="openModal('enhance')">⚡ ENHANCE</button>
+              <button class="btn btn-blue" onclick="openModal('deploy')">▶ DEPLOY</button>
+              <button class="btn btn-amber" id="auto-btn" onclick="toggleAuto()">⟳ AUTO</button>
+              <button class="btn btn-muted" onclick="openModal('checkpoint')">⊠ CHECKPOINT</button>
+            </div>
+          </div>
+
+          <!-- STATS GRID -->
+          <div class="card">
+            <div class="card-title">Combat Stats</div>
+            <div class="grid-3" style="gap:6px">
+              <div class="stat-box" onclick="openModal('stat-atk')">
+                <div class="lbl">ATK</div>
+                <div class="val val-red" id="stat-atk">2,840</div>
+              </div>
+              <div class="stat-box" onclick="openModal('stat-dps')">
+                <div class="lbl">DPS</div>
+                <div class="val val-amber" id="stat-dps">1,120</div>
+              </div>
+              <div class="stat-box" onclick="openModal('stat-def')">
+                <div class="lbl">DEF</div>
+                <div class="val val-blue" id="stat-def">640</div>
+              </div>
+              <div class="stat-box" onclick="openModal('stat-crit')">
+                <div class="lbl">CRIT</div>
+                <div class="val val-purple" id="stat-crit">28%</div>
+              </div>
+              <div class="stat-box" onclick="openModal('stat-hp')">
+                <div class="lbl">HP</div>
+                <div class="val val-green" id="stat-hp">8,200</div>
+              </div>
+              <div class="stat-box" onclick="switchPage('agents')">
+                <div class="lbl">AGENTS</div>
+                <div class="val val-green" id="stat-agents">5 / 8</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVE AGENTS MINI -->
+          <div class="card">
+            <div class="card-title">Active Agents</div>
+            <div id="agents-mini-list" style="display:flex;flex-direction:column;gap:6px">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+
+          <!-- EVENT STREAM -->
+          <div class="card col-span-2">
+            <div class="card-title">Live Event Stream</div>
+            <div id="event-stream">
+              <!-- populated by JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== AGENTS ===== -->
+      <div class="page" id="page-agents">
+        <div class="section-hdr">
+          <div>
+            <div class="page-title">Agents <span class="page-title-tag" id="deployed-count">5 DEPLOYED</span></div>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="openModal('recruit')">+ RECRUIT</button>
+        </div>
+        <div class="agents-grid" id="agents-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- ===== MODULES ===== -->
+      <div class="page" id="page-modules">
+        <div class="section-hdr">
+          <div class="page-title">Modules <span class="page-title-tag" id="owned-modules">12 OWNED</span></div>
+        </div>
+        <div class="filter-bar" id="module-filters">
+          <div class="filter-chip active" data-filter="all">ALL</div>
+          <div class="filter-chip" data-filter="common">COMMON</div>
+          <div class="filter-chip" data-filter="rare">RARE</div>
+          <div class="filter-chip" data-filter="epic">EPIC</div>
+          <div class="filter-chip" data-filter="attack">ATK</div>
+          <div class="filter-chip" data-filter="defense">DEF</div>
+          <div class="filter-chip" data-filter="support">SUPPORT</div>
+          <div class="filter-chip" data-filter="sort">⇅ SORT</div>
+        </div>
+        <div class="modules-grid" id="modules-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- ===== INVENTORY ===== -->
+      <div class="page" id="page-inventory">
+        <div class="page-title">Inventory</div>
+        <div class="grid-2" style="margin-bottom:12px">
+          <div class="card" style="cursor:pointer" onclick="openModal('use-item')">
+            <div class="card-title">Consumables</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--amber)">14</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">items</div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="openModal('use-item')">
+            <div class="card-title">Fragments</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--blue)">38</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">shards</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Item Log</div>
+          <div style="display:flex;flex-direction:column;gap:6px" id="inv-list">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PROGRESSION ===== -->
+      <div class="page" id="page-progression">
+        <div class="prog-header">
+          <div class="rank-label">CURRENT RANK</div>
+          <div class="rank-display glow-amber">WRAITH-III</div>
+          <div class="exp-block">
+            <div class="exp-label">
+              <span>EXP <strong>24,800</strong></span>
+              <span>NEXT: <strong>30,000</strong></span>
+            </div>
+            <div class="bar-track" style="height:8px">
+              <div class="bar-fill bar-amber" id="exp-fill" style="width:82%"></div>
+            </div>
+            <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:5px;text-align:right">82% · 5,200 XP TO NEXT RANK</div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="section-hdr" style="margin-bottom:10px">
+          <h3>Recompile Progress</h3>
+        </div>
+        <div class="recompile-block" style="margin-bottom:12px">
+          <div class="recompile-row">
+            <span class="recompile-name">CORE ENGINE v5 → v6</span>
+            <span class="recompile-eta">ETA 2h 14m</span>
+          </div>
+          <div class="recompile-prog-label"><span>PHASE 3/5: LINKING</span><span>61%</span></div>
+          <div class="bar-track">
+            <div class="bar-fill bar-blue" style="width:61%"></div>
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn btn-amber btn-sm" onclick="openModal('boost-recompile')">⚡ BOOST · 200 SH</button>
+          </div>
+        </div>
+
+        <div class="section-hdr" style="margin-bottom:10px">
+          <h3>Rank Milestones</h3>
+        </div>
+        <div class="milestone-list" id="milestones">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="spacer"></div>
+        <div class="section-hdr" style="margin-bottom:10px">
+          <h3>Unlock Tracker</h3>
+        </div>
+        <div class="unlock-grid" id="unlock-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS ===== -->
+      <div class="page" id="page-settings">
+        <div class="page-title">Settings</div>
+        <div class="settings-section">
+          <div class="card-title">System</div>
+          <div class="settings-row" onclick="toggleSetting(this)">
+            <div>
+              <div class="settings-label">Auto-Save State</div>
+              <div class="settings-sub">INTERVAL: 60s</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="settings-row" onclick="toggleSetting(this)">
+            <div>
+              <div class="settings-label">Background Simulation</div>
+              <div class="settings-sub">RUNS WHILE MINIMIZED</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="settings-row" onclick="toggleSetting(this)">
+            <div>
+              <div class="settings-label">Push Notifications</div>
+              <div class="settings-sub">MISSION COMPLETE, RANK UP</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="card-title">Display</div>
+          <div class="settings-row" onclick="toggleSetting(this)">
+            <div>
+              <div class="settings-label">Reduced Motion</div>
+              <div class="settings-sub">DISABLES SHIMMER ANIMATIONS</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="settings-row" onclick="toggleSetting(this)">
+            <div>
+              <div class="settings-label">Compact Mode</div>
+              <div class="settings-sub">DENSER LAYOUT</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="card-title">Account</div>
+          <div class="settings-row" onclick="openModal('wallet')">
+            <div>
+              <div class="settings-label">Wallet</div>
+              <div class="settings-sub">0x4f3a...8c3a · BASE L2</div>
+            </div>
+            <span style="color:var(--muted);font-size:14px">→</span>
+          </div>
+          <div class="settings-row" onclick="openModal('export')">
+            <div>
+              <div class="settings-label">Export State</div>
+              <div class="settings-sub">BACKUP SAVE DATA</div>
+            </div>
+            <span style="color:var(--muted);font-size:14px">→</span>
+          </div>
+          <div class="settings-row" style="margin-top:8px" onclick="openModal('danger')">
+            <div>
+              <div class="settings-label" style="color:var(--red)">Reset Progress</div>
+              <div class="settings-sub">IRREVERSIBLE</div>
+            </div>
+            <span style="color:var(--red);font-size:14px">⚠</span>
+          </div>
+        </div>
+        <div style="text-align:center;padding:20px 0;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)">
+          XUMOTION v2.4.1 · BUILD 240501
+        </div>
+      </div>
+
+      <!-- ===== AI CONSOLE ===== -->
+      <div class="page" id="page-ai-console" style="display:none;flex-direction:column;height:100%">
+        <div class="ai-console">
+          <div class="ai-header">
+            <div class="ai-avatar">
+              🧠
+              <div class="ai-online"></div>
+            </div>
+            <div class="ai-meta">
+              <div class="ai-name">NEXUS-AI</div>
+              <div class="ai-status-line" id="ai-status-line">SYSTEMS ONLINE · MONITORING</div>
+            </div>
+            <div class="ai-model-tag">XUM-7B</div>
+          </div>
+
+          <div class="chat-messages" id="chat-messages"></div>
+
+          <div class="quick-prompts" id="quick-prompts">
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">analyze sector</div>
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">optimize agents</div>
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">check integrity</div>
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">drop prediction</div>
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">rank roadmap</div>
+            <div class="qprompt" onclick="sendPrompt(this.textContent)">module audit</div>
+          </div>
+
+          <div class="chat-input-row">
+            <textarea
+              class="chat-input"
+              id="chat-input"
+              placeholder="Query NEXUS-AI..."
+              rows="1"
+              onkeydown="handleChatKey(event)"
+              oninput="autoResize(this)"
+            ></textarea>
+            <div class="chat-send" id="chat-send" onclick="submitChat()">▶</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- TG MAIN BUTTON MOCK -->
+    <div class="tg-main-btn" id="tg-main-btn" onclick="tgMainAction()">CONFIRM ACTION</div>
+
+    <!-- BOTTOM NAV (mobile) -->
+    <nav class="bottom-nav">
+      <div class="bnav-item active" data-page="dashboard"><span class="ic">⬡</span>Home</div>
+      <div class="bnav-item" data-page="agents"><span class="ic">◈</span>Agents</div>
+      <div class="bnav-item" data-page="modules"><span class="ic">◫</span>Modules</div>
+      <div class="bnav-item" data-page="progression"><span class="ic">◉</span>Progress</div>
+      <div class="bnav-item" data-page="ai-console"><span class="ic">◎</span>AI</div>
+      <div class="bnav-item" data-page="settings"><span class="ic">⊙</span>Settings</div>
+    </nav>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal-inner">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Modal</div>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div id="modal-body"></div>
+  </div>
 </div>
 
 <script src="/js/dashboard.js"></script>
