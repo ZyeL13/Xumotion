@@ -20,11 +20,12 @@ def enemy_exp(stage: int, base_exp: float, growth: float) -> int:
 
 
 def upgrade_cost(upgrade: 'UpgradeDef', level: int) -> int:
+    level = min(level, 1000)  # batas wajar
     return int(upgrade.base_cost * (upgrade.cost_growth ** level))
 
 
 def pet_cost(pet_def: 'PetDef', num_owned: int) -> int:
-    # cost_growth_per_agent is the new attribute name; fallback to cost_growth_per_pet for compatibility
+    num_owned = min(num_owned, 500)  # batas jumlah agen
     growth = getattr(pet_def, 'cost_growth_per_agent', getattr(pet_def, 'cost_growth_per_pet', 1.5))
     return int(pet_def.base_cost * (growth ** num_owned))
 

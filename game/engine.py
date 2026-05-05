@@ -16,6 +16,19 @@ from systems.daily import claim_daily, can_claim, load_progress
 from game.achievement_tracker import load_definitions as load_ach_defs
 from game.achievement_tracker import load_progress as load_ach_prog
 
+def _validate_command_input(cmd: str) -> tuple:
+    """Return (is_valid, error_message)."""
+    if not cmd:
+        return False, "Empty command"
+    if len(cmd) > 500:
+        return False, "Command too long"
+    # Hanya izinkan karakter alfanumerik, spasi, strip, underscore, slash
+    if not all(c.isalnum() or c in ' -_/#' for c in cmd):
+        return False, "Invalid characters"
+    parts = cmd.strip().lower().split()
+    if len(parts) > 10:
+        return False, "Too many arguments"
+    return True, ""
 
 def process_command(state: GameState, cmd: str) -> str:
     """Process a command (thread-safe). Returns response string."""
@@ -24,6 +37,9 @@ def process_command(state: GameState, cmd: str) -> str:
 
     with state.lock:
         cmd_clean = cmd.strip().lower()
+        valid, err = _validate_command_input(cmd_clean)
+        if not valid:
+            return f"COMMAND REJECTED: {err}"
         shortcut_map = {
             "1": "enhance atk",
             "2": "enhance defense",
@@ -77,10 +93,19 @@ def process_command(state: GameState, cmd: str) -> str:
             return undeploy_agent(state, parts[1])
 
         elif action in ("merge",):
-            if len(parts) < 4:
-                return "USAGE: merge <id1> <id2> <id3>"
-            from systems.economy import merge_agents
-            return merge_agents(state, parts[1], parts[2], parts[3])
+            # Format baru: merge <unit_name> <slot1> <slot2> <slot3>  -> 5 token
+            # Format lama: merge <slot1> <slot2> <slot3>              -> 4 token
+            if len(parts) == 4:
+                # Format lama (hanya angka slot, tanpa nama)
+                from systems.economy import merge_agents
+                return merge_agents(state, None, parts[1], parts[2], parts[3])
+            elif len(parts) == 5:
+                unit_name = parts[1]  # "echo" → nanti dicocokkan dengan "Echo Unit"
+                slot1, slot2, slot3 = parts[2], parts[3], parts[4]
+                from systems.economy import merge_agents
+                return merge_agents(state, unit_name, slot1, slot2, slot3)
+            else:
+                return "USAGE: merge <unit_name> <slot1> <slot2> <slot3>\nExample: merge Echo 1 2 3"
 
         elif action in ("install", "equip", "eq"):
             if len(parts) < 2:
@@ -106,7 +131,9 @@ def process_command(state: GameState, cmd: str) -> str:
                 return f"CORE: {core_total} | Need Sector {PRESTIGE_STAGE_REQ} (current: {state.current_stage}, {need} more)"
 
         elif action in ("recompile", "prestige", "rebirth"):
-            return do_prestige(state)
+            from systems.prestige import do_prestige
+            with state.lock:
+                return do_prestige(state)
 
         elif action in ("auto", "autobuy"):
             if len(parts) > 1 and parts[1] in ("on", "enable", "start"):

@@ -15,6 +15,7 @@ WS_PORT = int(os.environ.get("WS_PORT", "8081"))
 
 game_state = None
 websockets_clients = []
+MAX_WS_CLIENTS = 100
 
 # Path ke folder static
 STATIC_DIR = Path(__file__).parent / "static"
@@ -83,12 +84,27 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response(data)
 
     def _api_command(self):
-        content_len = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_len)
-        cmd = json.loads(body)
-        from game.engine import process_command
-        result = process_command(game_state, cmd.get("text", ""))
-        self._json_response({"response": result})
+        import hmac
+        token = os.environ.get("WEB_AUTH_TOKEN", "")
+        if token:
+            auth = self.headers.get("Authorization", "")
+            if not auth.startswith("Bearer ") or not hmac.compare_digest(auth[7:], token):
+                self.send_error(403, "Forbidden")
+                return
+        else:
+            remote = self.client_address[0]
+            if remote not in ("127.0.0.1", "localhost", "::1"):
+                self.send_error(403, "API not exposed to network")
+                return
+    
+        # === Tambahkan lock di sini ===
+        with game_state.lock:
+            content_len = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_len)
+            cmd = json.loads(body)
+            from game.engine import process_command
+            result = process_command(game_state, cmd.get("text", ""))
+            self._json_response({"response": result})
 
     def _json_response(self, data):
         self.send_response(200)
@@ -110,6 +126,10 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
 
 
 async def ws_handler(websocket):
+    global websockets_clients
+    if len(websockets_clients) >= MAX_WS_CLIENTS:
+        await websocket.close(code=1008, reason="Server full")
+        return
     websockets_clients.append(websocket)
     try:
         async for _ in websocket:

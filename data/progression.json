@@ -5,16 +5,17 @@
   },
   "level_up_rewards": {
     "atk_increase": 3,
+    "atk_pct_increase": 0.005,
     "max_hp_increase": 10
   },
   "offline_cap_seconds": 28800,
-    "prestige": {
-      "stage_requirement": 50,
-      "core_per_stage": 0.1,
-      "credits_mult_per_core": 0.1,
-      "exp_mult_per_core": 0.1,
-      "atk_mult_per_core": 0.05,
-      "def_mult_per_core": 0.05,
-      "hp_mult_per_core": 0.05
-    }
+  "prestige": {
+    "stage_requirement": 40,
+    "core_per_stage": 0.1,
+    "credits_mult_per_core": 0.1,
+    "exp_mult_per_core": 0.1,
+    "atk_mult_per_core": 0.05,
+    "def_mult_per_core": 0.05,
+    "hp_mult_per_core": 0.05
+  }
 }

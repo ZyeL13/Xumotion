@@ -167,27 +167,53 @@ def enhance_agent(state, agent_name: str) -> str:
         event_logger.emit("agent_enhance", f"AGENT ENHANCED: {target.name} -> Lv.{target.level} DPS {target.dps}")
         return f"AGENT ENHANCED: {target.name} Lv.{target.level} now DPS {target.dps}. Cost: {cost} credits."
 
-def merge_agents(state, *agent_ids: str) -> str:
-    """Merge 3 agents of the same tier into one higher-tier agent."""
+def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
+    """Merge 3 agents of the same tier into one higher-tier agent.
+    Usage: merge <unit_name> <id1> <id2> <id3>
+    - unit_name: filter by agent name (e.g., "Echo", "Cache"), or None for old format
+    - id1, id2, id3: agent name, hashtag number, or list index (1-based)
+    """
     player = state.player
     
     if len(agent_ids) != 3:
         return "MERGE requires exactly 3 agents of the same tier."
     
-    # Cari agent berdasarkan id (nama atau nomor)
-    targets = []
+    # Cari agent berdasarkan id (nama lengkap, hashtag, atau indeks list)
+    targets: list = []
     for aid in agent_ids:
         found = None
+        
+        # Coba 1: cocokkan nama lengkap (case-insensitive)
         for agent in player.agents:
-            # cocokkan nama lengkap atau nomor di belakang #
-            if aid.lower() == agent.name.lower() or aid == agent.name.split("#")[-1].strip():
+            if aid.lower() == agent.name.lower():
                 found = agent
                 break
+        
+        # Coba 2: cocokkan nomor hashtag di belakang #
         if not found:
-            return f"Agent '{aid}' not found."
+            for agent in player.agents:
+                tag = agent.name.split("#")[-1].strip()
+                if aid == tag:
+                    found = agent
+                    break
+        
+        # Coba 3: treat aid as 1-based index into player.agents list
+        if not found and aid.isdigit():
+            idx = int(aid)
+            if 1 <= idx <= len(player.agents):
+                found = player.agents[idx - 1]  # convert 1-based to 0-based
+        
+        if not found:
+            return f"Agent '{aid}' not found. Use agent name, hashtag number, or list index from /modules."
         if found in targets:
             return f"Duplicate agent '{aid}'."
         targets.append(found)
+    
+    # Validasi nama unit jika diberikan
+    if unit_name and unit_name.strip():
+        for agent in targets:
+            if unit_name.lower() not in agent.name.lower():
+                return f"Agent '{agent.name}' does not match unit type '{unit_name}'. All agents must be '{unit_name}'."
     
     # Validasi tier sama
     tiers = {agent.tier for agent in targets}
@@ -237,4 +263,3 @@ def merge_agents(state, *agent_ids: str) -> str:
     event_logger.emit("agent_merged", f"MERGE: {targets[0].name}+{targets[1].name}+{targets[2].name} → {new_agent.name} ({new_agent.tier})")
     status = "auto-deployed" if new_agent.deployed else "in bay"
     return f"MERGE COMPLETE: {new_agent.name} ({new_agent.tier}, DPS {new_agent.dps}) {status}."
-    return f"INSUFFICIENT CREDITS. Need {cost}, have {player.gold}."

@@ -59,28 +59,28 @@
           <span><span id="target-exp">0</span> EXP</span>
         </div>
         <div class="actions grid-2">
-          <button class="btn-outline" onclick="sendCommand('enhance atk')">ENHANCE</button>
-          <button class="btn-success" onclick="sendCommand('deploy')">DEPLOY</button>
+          <button class="btn-outline" data-command="enhance atk">ENHANCE</button>
+          <button class="btn-success" data-command="deploy">DEPLOY</button>
         </div>
       </div>
 
       <div class="stats-grid grid-2">
-        <div class="stat-card" onclick="sendCommand('enhance atk')">
+        <div class="stat-card" data-command="enhance atk">
           <span class="icon">⚔</span>
           <div>ATK</div>
           <div id="stat-atk">0</div>
         </div>
-        <div class="stat-card" onclick="sendCommand('enhance defense')">
+        <div class="stat-card" data-command="enhance defense">
           <span class="icon">⛊</span>
           <div>DEF</div>
           <div id="stat-def">0</div>
         </div>
-        <div class="stat-card" onclick="sendCommand('enhance max_hp')">
+        <div class="stat-card" data-command="enhance max_hp">
           <span class="icon">♥</span>
           <div>HP</div>
           <div id="stat-hp">0/0</div>
         </div>
-        <div class="stat-card" onclick="sendCommand('enhance crit_rate')">
+        <div class="stat-card" data-command="enhance crit_rate">
           <span class="icon">✦</span>
           <div>CRIT</div>
           <div id="stat-crit">0%</div>
@@ -88,12 +88,19 @@
       </div>
 
       <div class="quick-actions">
-        <button class="btn-outline sm" onclick="sendCommand('cycle')">CLAIM</button>
-        <button class="btn-outline sm" onclick="sendCommand('recompile')">RECOMPILE</button>
-        <button class="btn-outline sm" onclick="sendCommand('auto on')">AUTO</button>
-        <button class="btn-outline sm" onclick="sendCommand('checkpoint')">CHECKPOINT</button>
+        <button class="btn-outline sm" data-command="cycle">CLAIM</button>
+        <button class="btn-outline sm" data-command="recompile">RECOMPILE</button>
+        <button class="btn-outline sm" data-command="auto on">AUTO</button>
+        <button class="btn-outline sm" data-command="checkpoint">CHECKPOINT</button>
       </div>
 
+      <!-- Global Status Bar -->
+      <div id="status-bar" class="status-bar hidden"></div>
+
+      <!-- Operation Stream -->
+      <div id="operation-stream" class="mt-2 mb-2"></div>
+
+      <!-- Live Operations (WebSocket event feed) -->
       <div class="event-feed">
         <h3>Live Operations</h3>
         <div id="event-list"></div>
@@ -104,7 +111,7 @@
     <section id="tab-agents" class="tab-content hidden">
       <div id="agents-list"></div>
       <div class="mt-4">
-        <button class="btn-primary full-width" onclick="sendCommand('deploy')">DEPLOY NEW AGENT</button>
+        <button class="btn-primary full-width" data-command="deploy">DEPLOY NEW AGENT</button>
       </div>
     </section>
 
@@ -136,7 +143,7 @@
     <button class="nav-item" data-tab="agents">⛁</button>
     <button class="nav-item" data-tab="modules">⛊</button>
     <button class="nav-item" data-tab="progression">⛋</button>
-    <button class="nav-item" onclick="sendCommand('help')">?</button>
+    <button class="nav-item" data-command="help">?</button>
   </nav>
 </div>
 

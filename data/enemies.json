@@ -4,9 +4,9 @@
   "boss_interval": 10,
   "scaling": {
     "base_hp": 50,
-    "hp_growth": 1.18,
+    "hp_growth": 1.15,
     "base_gold": 10,
-    "gold_growth": 1.20,
+    "gold_growth": 1.21,
     "base_exp": 5,
     "exp_growth": 1.14,
     "base_atk": 3,

@@ -9,6 +9,17 @@ from systems.progression import required_exp
 
 TELEGRAM_TOKEN = os.environ.get("RPG_BOT_TOKEN", "")
 
+# Authorized Telegram user IDs (comma-separated)
+ADMIN_IDS_STR = os.environ.get("TELEGRAM_ADMIN_IDS", "")
+ADMIN_IDS = set(ADMIN_IDS_STR.split(",")) if ADMIN_IDS_STR else set()
+
+
+def _is_authorized(update: Update) -> bool:
+    """Allow all if ADMIN_IDS is empty, otherwise check user ID."""
+    if not ADMIN_IDS:
+        return True
+    return str(update.effective_user.id) in ADMIN_IDS
+
 
 class TelegramBot:
     def __init__(self, state: GameState):
@@ -24,7 +35,6 @@ class TelegramBot:
         except Exception:
             exp_needed = "?"
 
-        # Progress bars
         hp_current = max(0, e.hp)
         hp_pct = hp_current / e.max_hp if e.max_hp > 0 else 0
         hp_bar = "█" * int(hp_pct * 10) + "░" * (10 - int(hp_pct * 10))
@@ -37,7 +47,6 @@ class TelegramBot:
         agents_active = len(p.agents)
         agents_str = f"{agents_active} ACTIVE" if agents_active > 0 else "NONE"
 
-        # Zone name
         zone_map = {
             (0, 9): "SANDBOX",
             (10, 19): "RELAY BASIN",
@@ -59,7 +68,6 @@ class TelegramBot:
         if stage > 99:
             zone = "DEEP LAYER"
 
-        # Last log event
         log_msg = ""
         ev = event_logger.poll()
         if ev:
@@ -99,7 +107,7 @@ class TelegramBot:
             BotCommand("enhance", "Enhance module (atk|defense|max_hp|crit_rate)"),
             BotCommand("deploy", "Deploy agent"),
             BotCommand("undeploy", "Undeploy agent"),
-            BotCommand("merge", "Merge 3 agents of same tier"),
+            BotCommand("merge", "Merge 3 agents: /merge <unit_name> <slot1> <slot2> <slot3>"),
             BotCommand("install", "Install module from bay"),
             BotCommand("uninstall", "Uninstall module by slot"),
             BotCommand("modules", "View module bay & agents"),
@@ -123,6 +131,9 @@ class TelegramBot:
             await update.message.reply_text(self._format_stats())
 
         async def enhance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             target = " ".join(context.args) if context.args else ""
             if not target:
                 await update.message.reply_text("Usage: /enhance atk | defense | max_hp | crit_rate")
@@ -131,6 +142,9 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def deploy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             agent_type = context.args[0] if context.args else ""
             if agent_type == "list":
                 response = process_command(self.state, "deploy list")
@@ -139,6 +153,9 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def undeploy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             if not context.args:
                 await update.message.reply_text("USAGE: /undeploy <agent name/number>")
                 return
@@ -146,13 +163,29 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def merge_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            if len(context.args) < 3:
-                await update.message.reply_text("USAGE: /merge <id1> <id2> <id3>")
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
                 return
-            response = process_command(self.state, f"merge {context.args[0]} {context.args[1]} {context.args[2]}")
+            if len(context.args) < 4:
+                await update.message.reply_text(
+                    "USAGE: /merge <unit_name> <slot1> <slot2> <slot3>\n"
+                    "Example: /merge Echo 1 2 3"
+                )
+                return
+            unit_name = context.args[0]
+            try:
+                slots = [int(x) for x in context.args[1:4]]
+            except ValueError:
+                await update.message.reply_text("Slots must be integers. Example: /merge Echo 1 2 3")
+                return
+            command_str = f"merge {unit_name} {slots[0]} {slots[1]} {slots[2]}"
+            response = process_command(self.state, command_str)
             await update.message.reply_text(response)
 
         async def install(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             if not context.args:
                 response = process_command(self.state, "install")
                 await update.message.reply_text(response)
@@ -166,6 +199,9 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def uninstall(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             if not context.args:
                 await update.message.reply_text("Usage: /uninstall injector | barrier | cache")
                 return
@@ -174,27 +210,31 @@ class TelegramBot:
 
         async def modules(update: Update, context: ContextTypes.DEFAULT_TYPE):
             p = self.state.player
-            # Agents list
             if p.agents:
                 agent_lines = []
                 for i, a in enumerate(p.agents):
                     deployed = " [ACTIVE]" if a.deployed else ""
-                    agent_lines.append(f"[{i+1}] {a.name}{deployed} (Tier: {a.tier}, Lv.{a.level}, DPS {a.dps})")
-                    agents_str = "\n".join(agent_lines)
+                    agent_lines.append(
+                        f"[{i+1}] {a.name}{deployed} (Tier: {a.tier}, Lv.{a.level}, DPS {a.dps})"
+                    )
+                agents_str = "\n".join(agent_lines)
             else:
                 agents_str = "none"
 
             slots_info = f"SLOTS: {p.get_deployed_count()}/{p.max_agent_slots} active"
 
-            # Module bay
             if p.inventory:
                 mod_lines = []
                 for i, mod in enumerate(p.inventory):
                     stat_parts = []
-                    if mod.atk_bonus: stat_parts.append(f"ATK+{mod.atk_bonus}")
-                    if mod.def_bonus: stat_parts.append(f"DEF+{mod.def_bonus}")
-                    if mod.hp_bonus: stat_parts.append(f"HP+{mod.hp_bonus}")
-                    if mod.crit_rate_bonus: stat_parts.append(f"CRIT+{mod.crit_rate_bonus:.1%}")
+                    if mod.atk_bonus:
+                        stat_parts.append(f"ATK+{mod.atk_bonus}")
+                    if mod.def_bonus:
+                        stat_parts.append(f"DEF+{mod.def_bonus}")
+                    if mod.hp_bonus:
+                        stat_parts.append(f"HP+{mod.hp_bonus}")
+                    if mod.crit_rate_bonus:
+                        stat_parts.append(f"CRIT+{mod.crit_rate_bonus:.1%}")
                     stats = " | ".join(stat_parts) or "no stats"
                     installed = " [INSTALLED]" if mod.installed else ""
                     mod_lines.append(f"[{i+1}] {mod.name}{installed}\n    {stats}")
@@ -202,10 +242,17 @@ class TelegramBot:
             else:
                 bay_str = "empty"
 
-            msg = f"AGENTS:\n{agents_str}\n\n{slots_info}\n\nMODULE BAY ({len(p.inventory)}):\n{bay_str}"
+            msg = (
+                f"AGENTS:\n{agents_str}\n\n"
+                f"{slots_info}\n\n"
+                f"MODULE BAY ({len(p.inventory)}):\n{bay_str}"
+            )
             await update.message.reply_text(msg)
 
         async def recompile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             response = process_command(self.state, "recompile")
             await update.message.reply_text(response)
 
@@ -214,11 +261,17 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def auto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             mode = context.args[0] if context.args else ""
             response = process_command(self.state, f"auto {mode}")
             await update.message.reply_text(response)
 
         async def cycle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             response = process_command(self.state, "cycle")
             await update.message.reply_text(response)
 
@@ -227,14 +280,23 @@ class TelegramBot:
             await update.message.reply_text(response)
 
         async def checkpoint(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             response = process_command(self.state, "checkpoint")
             await update.message.reply_text(response)
 
         async def restore(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             response = process_command(self.state, "restore")
             await update.message.reply_text(response)
 
         async def enhance_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            if not _is_authorized(update):
+                await update.message.reply_text("❌ Unauthorized.")
+                return
             if not context.args:
                 await update.message.reply_text("Usage: /ea <agent name>")
                 return
@@ -245,6 +307,7 @@ class TelegramBot:
             response = process_command(self.state, "help")
             await update.message.reply_text(response)
 
+        # Register all handlers
         self.app.add_handler(CommandHandler("start", start))
         self.app.add_handler(CommandHandler("stats", stats))
         self.app.add_handler(CommandHandler("enhance", enhance))
