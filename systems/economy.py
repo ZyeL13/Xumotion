@@ -118,55 +118,62 @@ def deploy_specific_agent(state, agent_name: str) -> str:
 
 
 def enhance_agent(state, agent_name: str) -> str:
-    """Enhance a deployed agent's DPS. Supports name with optional number."""
+    """Enhance an agent's DPS. Accepts ID, full name, partial name, #tag, or index."""
     player = state.player
     
-    # Parse name and optional number
-    parts = agent_name.rsplit(None, 1)
-    target_name = parts[0]
-    target_num = None
-    
-    if len(parts) == 2 and parts[1].isdigit():
-        target_num = int(parts[1])
-    elif len(parts) == 1 and parts[0].isdigit():
-        target_num = int(parts[0])
-        target_name = None
-    
-    matches = []
-    for agent in player.agents:
-        if target_name and target_name.lower() in agent.name.lower():
-            matches.append(agent)
-        elif target_num and str(target_num) in agent.name.split("#")[-1]:
-            matches.append(agent)
-    
-    if not matches:
-        return f"Agent not found. Use '/ea <name>' or '/ea <number>'."
-    
+    # Gabungkan input (mungkin mengandung spasi)
+    query = agent_name.strip().lower()
     target = None
-    if target_num:
-        for agent in matches:
-            try:
-                agent_num = int(agent.name.split("#")[-1].strip())
-                if agent_num == target_num:
-                    target = agent
-                    break
-            except Exception:
-                pass
     
-    if not target and matches:
-        target = matches[0]
+    # 1. Cari berdasarkan ID persis (case‑insensitive)
+    for agent in player.agents:
+        if query == agent.id.lower():
+            target = agent
+            break
+    
+    # 2. Cari berdasarkan nama lengkap (case‑insensitive)
+    if not target:
+        for agent in player.agents:
+            if query == agent.name.lower():
+                target = agent
+                break
+    
+    # 3. Cari berdasarkan pencocokan sebagian (semua kata harus ada di nama)
+    if not target:
+        for agent in player.agents:
+            name_lower = agent.name.lower()
+            if all(word in name_lower for word in query.split()):
+                target = agent
+                break
+    
+    # 4. Cari berdasarkan nomor hashtag (contoh: "1")
+    if not target and query.isdigit():
+        tag = query
+        for agent in player.agents:
+            if agent.name.split("#")[-1].strip() == tag:
+                target = agent
+                break
+    
+    # 5. Cari berdasarkan indeks list (1‑based)
+    if not target and query.isdigit():
+        idx = int(query)
+        if 1 <= idx <= len(player.agents):
+            target = player.agents[idx - 1]
     
     if not target:
-        return f"Agent not found."
+        return f"Agent not found: '{agent_name}'. Use ID, name, #number, or index from /modules."
     
-    # Enhance cost based on agent's level and tier
+    # Biaya enhance
     cost = int(50 * (1.35 ** (target.level - 1)))
     if player.gold >= cost:
         player.gold -= cost
         target.level += 1
-        target.dps = int(target.base_dps * (1.2 ** (target.level - 1)))  # 20% increase per level
+        target.dps = int(target.base_dps * (1.2 ** (target.level - 1)))
         event_logger.emit("agent_enhance", f"AGENT ENHANCED: {target.name} -> Lv.{target.level} DPS {target.dps}")
         return f"AGENT ENHANCED: {target.name} Lv.{target.level} now DPS {target.dps}. Cost: {cost} credits."
+    else:
+        return f"INSUFFICIENT CREDITS. Need {cost}, have {player.gold}."
+
 
 def merge_agents(state, unit_name: str, *agent_ids: str) -> str:
     """Merge 3 agents of the same tier into one higher-tier agent.

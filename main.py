@@ -15,7 +15,7 @@ from systems.daily import can_claim
 
 
 def main():
-#    state = load_game()
+    state = load_game()
     if state is None:
         state = GameState(
             player=Player(),
@@ -29,7 +29,7 @@ def main():
         state.offline_message += " | Cycle deposit available. /cycle"
 
     # Start web dashboard
-    start_web(state)
+#    start_web(state)
 
     # Start game loop in background thread
     game_thread = threading.Thread(target=game_loop, args=(state,), daemon=True)
