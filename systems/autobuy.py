@@ -4,7 +4,6 @@ Auto-enhance system - automated purchase logic for idle progression.
 from systems.economy import handle_upgrade, deploy_agent, get_upgrade_level
 from game.registry import UPGRADE_REGISTRY, AGENT_REGISTRY, DEFAULT_AGENT_ID
 from game.formulas import upgrade_cost
-from game.event_logger import event_logger
 
 
 def autobuy_tick(state) -> list:

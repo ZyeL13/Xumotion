@@ -1,17 +1,14 @@
 import time
-import threading
 from game.state import GameState
-from game.save_manager import save_game, load_game
+from game.save_manager import save_game
 from game.combat import tick_combat
 from systems.automation import tick_automation
 from game.event_logger import event_logger
 from systems.autobuy import autobuy_tick
 from game.constants import PRESTIGE_STAGE_REQ
-from game.registry import AGENT_REGISTRY
-from game.formulas import pet_cost
-from systems.economy import handle_upgrade, deploy_agent, enhance_agent
+from systems.economy import handle_upgrade, enhance_agent
 from systems.modules import auto_install_best, install_module, uninstall_slot
-from systems.prestige import can_prestige, get_core_gain, do_prestige
+from systems.prestige import can_prestige, get_core_gain
 from systems.daily import claim_daily, can_claim, load_progress
 from game.achievement_tracker import load_definitions as load_ach_defs
 from game.achievement_tracker import load_progress as load_ach_prog

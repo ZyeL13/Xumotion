@@ -49,7 +49,7 @@ def tick_combat(state):
         event_logger.emit("target_purged", f"TARGET PURGED: {enemy.name} | +{enemy.reward_gold} CREDITS +{enemy.reward_exp} EXP")
 
         # Loot drop (50%)
-        if random.random() < 0.5:
+        if random.random() < 0.5:  # nosec B311
             from systems.loot import generate_module
             loot = generate_module(state.current_stage)
             player.inventory.append(loot)

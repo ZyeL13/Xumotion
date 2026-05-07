@@ -55,7 +55,7 @@ def uninstall_slot(player, slot_name: str) -> str:
     try:
         slot = Slot(slot_name.lower())
     except ValueError:
-        return f"INVALID SLOT. Available: injector, barrier, cache."
+        return "INVALID SLOT. Available: injector, barrier, cache."
 
     for mod in player.inventory:
         if mod.installed and mod.slot == slot:

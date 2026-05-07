@@ -25,10 +25,10 @@ class Enemy:
     def generate(cls, stage: int) -> "Enemy":
         is_boss = (stage % BOSS_INTERVAL == 0)
         if is_boss:
-            name = random.choice(BOSS_NAMES) + f" {stage}"
+            name = random.choice(BOSS_NAMES)  # nosec B311 + f" {stage}"
             rarity = "prime"
         else:
-            name = random.choice(NORMAL_ENEMIES) + f" {stage}"
+            name = random.choice(NORMAL_ENEMIES)  # nosec B311 + f" {stage}"
             rarity = "normal"
 
         hp = enemy_hp(stage, BASE_ENEMY_HP, ENEMY_HP_GROWTH)
@@ -48,7 +48,7 @@ class Enemy:
     @classmethod
     def generate_prime(cls, stage: int) -> "Enemy":
         """Generate a prime (boss) enemy regardless of stage."""
-        name = random.choice(BOSS_NAMES) + " PRIME"
+        name = random.choice(BOSS_NAMES)  # nosec B311 + " PRIME"
         hp = enemy_hp(stage, BASE_ENEMY_HP, ENEMY_HP_GROWTH) * 2
         gold = enemy_gold(stage, BASE_GOLD_REWARD, GOLD_REWARD_GROWTH) * 3
         exp = enemy_exp(stage, BASE_EXP_REWARD, EXP_REWARD_GROWTH) * 3

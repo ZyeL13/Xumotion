@@ -65,7 +65,7 @@ def load_game() -> GameState | None:
         with open(SAVE_PATH, "r") as f:
             data = json.load(f)
         _validate_player_save(data)
-    except (json.JSONDecodeError, ValueError, FileNotFoundError) as e:
+    except (json.JSONDecodeError, ValueError, FileNotFoundError):
         # Secara opsional log error, tapi kita tidak punya logger global.
         # Cukup kembalikan None agar memulai game baru.
         return None

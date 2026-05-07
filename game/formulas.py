@@ -39,7 +39,7 @@ def combat_damage(atk: int, dps: int, defense: int) -> int:
 
 
 def apply_crit(damage: int, crit_rate: float, crit_damage: float) -> int:
-    if random.random() < crit_rate:
+    if random.random() < crit_rate:  # nosec B311
         return int(damage * crit_damage)
     return damage
 

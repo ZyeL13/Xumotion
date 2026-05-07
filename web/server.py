@@ -135,7 +135,7 @@ async def ws_handler(websocket):
         async for _ in websocket:
             pass
     except Exception:
-        pass
+        websockets_clients.remove(websocket)
     finally:
         if websocket in websockets_clients:
             websockets_clients.remove(websocket)

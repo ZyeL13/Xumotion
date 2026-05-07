@@ -1,6 +1,5 @@
 import time
 from game.constants import OFFLINE_PROGRESS_CAP
-from game.formulas import offline_gold
 # earned_gold = offline_gold(player.dps, elapsed)
 
 def calculate_offline_reward(state):

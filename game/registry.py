@@ -3,7 +3,7 @@ Registry pattern - UPGRADE_REGISTRY and AGENT_REGISTRY.
 Loads raw data from constants.py (UPGRADE_DATA, AGENT_DEFINITIONS).
 """
 from dataclasses import dataclass
-from typing import Any, Dict, Callable
+from typing import Dict, Callable
 from game.constants import UPGRADE_DATA, AGENT_DEFINITIONS
 
 

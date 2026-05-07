@@ -1,7 +1,6 @@
 """
 Recompile system - reset progress for permanent core bonuses.
 """
-from models.player import Player
 from models.enemy import Enemy
 from game.constants import PRESTIGE_STAGE_REQ, CORE_PER_STAGE
 from game.event_logger import event_logger

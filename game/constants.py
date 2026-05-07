@@ -37,7 +37,6 @@ ENEMY_ATK_GROWTH = ENEMY_SCALING.get("atk_growth", 1.10)
 UPGRADE_DATA = _upgrades
 
 # --- Agents (raw data) ---
-from game.content import load_agents
 AGENT_RAW = load_agents()
 
 def _flatten_agents(raw: dict) -> dict:

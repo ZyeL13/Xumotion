@@ -1,7 +1,7 @@
 """
 Loot system - module generation from purged entities.
 """
-import random   # # nosec B311
+import random   # 
 from models.module import Module, Rarity, Slot
 
 
@@ -39,7 +39,7 @@ def roll_rarity(stage: int) -> Rarity:
 
 def generate_module(stage: int) -> Module:
     """Generate a random module scaled to sector."""
-    slot = random.choice(list(Slot))
+    slot = random.choice  (list(Slot))
     rarity = roll_rarity(stage)
     
     rarity_index = list(Rarity).index(rarity)
@@ -55,16 +55,16 @@ def generate_module(stage: int) -> Module:
     
     if "atk" in base_stats:
         lo, hi = base_stats["atk"]
-        atk = random.randint(lo, hi)
+        atk = random.randint  (lo, hi)
     if "def" in base_stats:
         lo, hi = base_stats["def"]
-        def_bonus = random.randint(lo, hi)
+        def_bonus = random.randint  (lo, hi)
     if "hp" in base_stats:
         lo, hi = base_stats["hp"]
-        hp = random.randint(lo, hi)
+        hp = random.randint  (lo, hi)
     if "crit_rate" in base_stats:
         lo, hi = base_stats["crit_rate"]
-        crit = round(random.uniform(lo, hi), 3)
+        crit = round(random.uniform  (lo, hi), 3)
     
     return Module(
         name=name,

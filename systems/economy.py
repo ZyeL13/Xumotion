@@ -322,5 +322,5 @@ def auto_deploy_best(state) -> str:
         event_logger.emit("agent_deployed", f"AGENT DEPLOYED: {agent.name} (auto)")
 
     if deployed_list:
-        return f"AUTO-DEPLOYED: " + ", ".join(deployed_list) + f" [{player.get_deployed_count()}/{player.max_agent_slots} slots]"
+        return "AUTO-DEPLOYED: " + ", ".join(deployed_list) + f" [{player.get_deployed_count()}/{player.max_agent_slots} slots]"
     return ""
