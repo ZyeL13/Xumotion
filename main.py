@@ -3,6 +3,7 @@ import threading
 from dotenv import load_dotenv
 load_dotenv()
 
+# ruff: noqa: E402
 from game.state import GameState
 from game.save_manager import load_game
 from game.engine import game_loop

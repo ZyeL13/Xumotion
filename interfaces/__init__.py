@@ -1,3 +1,2 @@
-# Biarin kosong aja, atau:
-from interfaces.telegram_bot import TelegramBot
-from interfaces.cli_monitor import monitor_loop
+from interfaces.telegram_bot import TelegramBot as TelegramBot
+from interfaces.cli_monitor import monitor_loop as monitor_loop
