@@ -132,8 +132,7 @@ def process_command(state: GameState, cmd: str) -> str:
 
         elif action in ("recompile", "prestige", "rebirth"):
             from systems.prestige import do_prestige
-            with state.lock:
-                return do_prestige(state)
+            return do_prestige(state)
 
         elif action in ("auto", "autobuy"):
             if len(parts) > 1 and parts[1] in ("on", "enable", "start"):
@@ -220,7 +219,6 @@ def process_command(state: GameState, cmd: str) -> str:
 
 
 def game_loop(state: GameState):
-    """Blocking game loop (call in separate thread)."""
     last_tick = time.time()
     tick_rate = 1.0
 
@@ -229,15 +227,19 @@ def game_loop(state: GameState):
         delta = now - last_tick
 
         if delta >= tick_rate:
+            print("[LOOP] Acquiring lock...")
             with state.lock:
+                print("[LOOP] Lock acquired. Ticking...")
                 tick_combat(state)
                 tick_automation(state)
                 msgs = autobuy_tick(state)
                 for msg in msgs:
                     event_logger.emit("auto_enhance", msg)
                 save_game(state)
+                print("[LOOP] Tick done. Releasing lock.")
             last_tick = now
 
         time.sleep(0.1)
 
+    print("[LOOP] Exiting game loop.")
     save_game(state)

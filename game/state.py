@@ -18,6 +18,6 @@ class GameState:
     running: bool = True
     offline_message: str = ""
     output_message: str = ""
-    lock: threading.Lock = field(default_factory=threading.Lock)
+    lock: threading.RLock = field(default_factory=threading.RLock)
     player_dead: bool = False
     prime_timer: float = 0.0

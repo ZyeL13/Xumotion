@@ -37,8 +37,10 @@ def main():
 
     # Start Telegram bot in main async event loop
     bot = TelegramBot(state)
-    asyncio.run(bot.run())
-
+    try:
+        asyncio.run(bot.run())
+    except KeyboardInterrupt:
+        print("Interrupted. Shutting down.")
 
 if __name__ == "__main__":
     main()
