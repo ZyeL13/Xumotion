@@ -1,13 +1,22 @@
 from dataclasses import dataclass
-import random   # # nosec B311
-from game.constants import (
-    BASE_ENEMY_HP, ENEMY_HP_GROWTH,
-    BASE_GOLD_REWARD, GOLD_REWARD_GROWTH,
-    BASE_EXP_REWARD, EXP_REWARD_GROWTH,
-    BOSS_INTERVAL, NORMAL_ENEMIES, BOSS_NAMES,
-    ENEMY_BASE_ATK, ENEMY_ATK_GROWTH,
-)
-from game.formulas import enemy_hp, enemy_gold, enemy_exp, enemy_atk
+import random  # nosec B311 — gameplay randomness only
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.player import Player
+
+# Nama pool tetap
+NORMAL_NAMES = [
+    "Echo Fragment", "Corrupt Process", "Forked Instance",
+    "Phantom Thread", "Rogue Worker", "Memory Leak"
+]
+BOSS_NAMES = ["Validator Prime", "Deadlock Core", "Archive Warden"]
+
+# Base rewards per sector (nilai minimal, akan diskalakan)
+BASE_GOLD = 10
+BASE_EXP = 5
+GOLD_SECTOR_GROWTH = 1.10   # per sektor
+EXP_SECTOR_GROWTH = 1.08
 
 
 @dataclass
@@ -19,49 +28,62 @@ class Enemy:
     defense: int = 0
     reward_gold: int = 0
     reward_exp: int = 0
-    rarity: str = "normal"
+    rarity: str = "normal"   # "normal" or "boss"
 
     @classmethod
-    def generate(cls, stage: int) -> "Enemy":
-        is_boss = (stage % BOSS_INTERVAL == 0)
-        if is_boss:
-            name = random.choice(BOSS_NAMES)  # nosec B311 + f" {stage}"
-            rarity = "prime"
-        else:
-            name = random.choice(NORMAL_ENEMIES)  # nosec B311 + f" {stage}"
-            rarity = "normal"
+    def generate(cls, sector: int, substage: int, player: "Player") -> "Enemy":
+        """Generate normal or boss enemy with hybrid scaling."""
+        # 1. Tentukan tipe
+        is_boss = (substage == 10)
+        rarity = "boss" if is_boss else "normal"
+        name_pool = BOSS_NAMES if is_boss else NORMAL_NAMES
+        name = random.choice(name_pool)  # nosec B311
 
-        hp = enemy_hp(stage, BASE_ENEMY_HP, ENEMY_HP_GROWTH)
-        gold = enemy_gold(stage, BASE_GOLD_REWARD, GOLD_REWARD_GROWTH)
-        exp = enemy_exp(stage, BASE_EXP_REWARD, EXP_REWARD_GROWTH)
-        atk = enemy_atk(stage, ENEMY_BASE_ATK, ENEMY_ATK_GROWTH)
+        # 2. Baseline sektor (sedikit peningkatan per sektor)
+        sector_mult = 1.0 + (sector - 1) * 0.05
+
+        # 3. Multiplier dalam sektor (1.00 → 1.25)
+        encounter_mult = 1.0 + (substage - 1) * 0.03
+
+        # 4. Stat relatif terhadap pemain
+        hp_rel = random.uniform(1.2, 1.8)   # nosec B311
+        atk_rel = random.uniform(0.85, 1.15) # nosec B311
+        def_rel = random.uniform(0.8, 1.1)   # nosec B311
+
+        base_hp = int(player.max_hp * hp_rel * sector_mult * encounter_mult)
+        base_atk = int(player.atk * atk_rel * sector_mult * encounter_mult)
+        base_def = int(player.defense * def_rel * sector_mult * encounter_mult)
+
+        # 5. Boss dibuff lebih kuat
+        if is_boss:
+            hp_mult = random.uniform(2.5, 3.5)   # nosec B311
+            atk_mult = random.uniform(1.4, 1.8)   # nosec B311
+            def_mult = random.uniform(1.3, 1.6)   # nosec B311
+            hp = int(base_hp * hp_mult)
+            atk = int(base_atk * atk_mult)
+            defense = int(base_def * def_mult)
+        else:
+            hp = base_hp
+            atk = base_atk
+            defense = base_def
+
+        # 6. Hitung stage untuk reward (biar reward tetap terasa progresif)
+        stage = (sector - 1) * 10 + substage
+        gold = int(BASE_GOLD * (GOLD_SECTOR_GROWTH ** sector) * encounter_mult)
+        exp = int(BASE_EXP * (EXP_SECTOR_GROWTH ** sector) * encounter_mult)
+        if is_boss:
+            gold = int(gold * 2.5)
+            exp = int(exp * 3)
+
         return cls(
             name=name,
             hp=hp,
             max_hp=hp,
+            atk=atk,
+            defense=defense,
             reward_gold=gold,
             reward_exp=exp,
             rarity=rarity,
-            atk=atk,
-        )
-
-    @classmethod
-    def generate_prime(cls, stage: int) -> "Enemy":
-        """Generate a prime (boss) enemy regardless of stage."""
-        name = random.choice(BOSS_NAMES)  # nosec B311 + " PRIME"
-        hp = enemy_hp(stage, BASE_ENEMY_HP, ENEMY_HP_GROWTH) * 2
-        gold = enemy_gold(stage, BASE_GOLD_REWARD, GOLD_REWARD_GROWTH) * 3
-        exp = enemy_exp(stage, BASE_EXP_REWARD, EXP_REWARD_GROWTH) * 3
-        atk = enemy_atk(stage, ENEMY_BASE_ATK, ENEMY_ATK_GROWTH) * 1.5
-
-        return cls(
-            name=name,
-            hp=hp,
-            max_hp=hp,
-            reward_gold=gold,
-            reward_exp=exp,
-            rarity="prime",
-            atk=int(atk),
         )
 
     def to_dict(self) -> dict:

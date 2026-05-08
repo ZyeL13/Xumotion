@@ -37,7 +37,7 @@ def check_and_unlock(state) -> list:
     p = state.player
     stats = {
         "kills": state.kills_in_stage,
-        "stage": state.current_stage,
+        "stage": state.sector * 10 + state.substage,
         "credits": p.gold,
         "rank": p.level,
         "recompile": p.recompile_count,

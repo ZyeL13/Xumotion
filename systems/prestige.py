@@ -1,22 +1,26 @@
 """
 Recompile system - reset progress for permanent core bonuses.
 """
+from models.player import Player
 from models.enemy import Enemy
 from game.constants import PRESTIGE_STAGE_REQ, CORE_PER_STAGE
 from game.event_logger import event_logger
 
 
 def can_prestige(state) -> bool:
-    return state.current_stage >= PRESTIGE_STAGE_REQ
+    # Cek apakah sudah mencapai sektor minimum untuk recompile
+    return state.sector >= PRESTIGE_STAGE_REQ
 
 
 def get_core_gain(state) -> int:
-    return max(1, int(state.current_stage * CORE_PER_STAGE))
+    # Gunakan stage ekivalen untuk menghitung core gain (agar lebih adil)
+    stage_equivalent = (state.sector - 1) * 10 + state.substage
+    return max(1, int(stage_equivalent * CORE_PER_STAGE))
 
 
 def do_prestige(state) -> str:
     if not can_prestige(state):
-        need = PRESTIGE_STAGE_REQ - state.current_stage
+        need = PRESTIGE_STAGE_REQ - state.sector
         return f"RECOMPILE DENIED. Reach Sector {PRESTIGE_STAGE_REQ} (need {need} more)."
 
     core = get_core_gain(state)
@@ -44,9 +48,12 @@ def do_prestige(state) -> str:
     player.hp_upgrade_lvl = 0
     player.crit_upgrade_lvl = 0
 
-    state.current_stage = 1
+    state.sector = 1
+    state.substage = 1
     state.kills_in_stage = 0
-    state.enemy = Enemy.generate(stage=1)
+    state.boss_active = False
+    state.boss_timer = 0.0
+    state.enemy = Enemy.generate(state.sector, state.substage, state.player)
 
     event_logger.emit("recompile", f"RECOMPILE #{player.recompile_count}! +{core} CORE (total: {player.core_points})")
 

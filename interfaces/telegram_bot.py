@@ -88,7 +88,8 @@ class TelegramBot:
             (60, 69): "SIGNAL DEPTHS", (70, 79): "CORE NETWORK", (80, 89): "ECHO VOID",
             (90, 99): "GENESIS RING",
         }
-        stage = self.state.current_stage
+        stage = self.state.sector
+        substage = self.state.substage
         zone = "UNKNOWN"
         for (lo, hi), name in zone_map.items():
             if lo <= stage <= hi:
@@ -105,7 +106,7 @@ class TelegramBot:
         lines = [
             "SYSTEM ONLINE",
             "",
-            f"SECTOR {stage} - {zone}",
+            f"SECTOR {stage} · {substage}/10 - {zone}"
             f"{e.name} [{e.rarity.upper()}]",
             f"INTEGRITY {hp_bar} {hp_current}/{e.max_hp}",
             "",

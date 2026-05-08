@@ -124,8 +124,25 @@ def process_command(state: GameState, cmd: str) -> str:
                 gain = get_core_gain(state)
                 return f"CORE: {core_total} | READY! +{gain} CORE on recompile."
             else:
-                need = PRESTIGE_STAGE_REQ - state.current_stage
-                return f"CORE: {core_total} | Need Sector {PRESTIGE_STAGE_REQ} (current: {state.current_stage}, {need} more)"
+                need = PRESTIGE_STAGE_REQ - state.sector
+                return f"CORE: {core_total} | Need Sector {PRESTIGE_STAGE_REQ} (current: {state.sector}, {need} more)"
+
+        elif action in ("next",):
+            if state.boss_active:
+                # Restart boss fight
+                from models.enemy import Enemy
+                state.enemy = Enemy.generate(state.sector, state.substage, state.player)
+                # Reset timer sesuai sektor
+                if state.sector <= 5:
+                    state.boss_timer = 60.0
+                elif state.sector <= 15:
+                    state.boss_timer = 45.0
+                else:
+                    state.boss_timer = 30.0
+                event_logger.emit("boss_retry", f"BOSS RETRY — Sector {state.sector} · 10/10")
+                return f"BOSS RETRY — Sector {state.sector} · 10/10. Timer started."
+            else:
+                return "No active boss to retry."
 
         elif action in ("recompile", "prestige", "rebirth"):
             from systems.prestige import do_prestige
@@ -152,23 +169,6 @@ def process_command(state: GameState, cmd: str) -> str:
                 minutes = int((remaining % 3600) // 60)
                 return f"Next cycle in {hours}h {minutes}m."
             return claim_daily(state)
-
-        elif action in ("die", "killme"):
-            player.hp = 0
-            state.player_dead = True
-            event_logger.emit("player_died", "OPERATOR DOWN — Type /restore to continue")
-            return "OPERATOR DOWN. Type /restore to continue."
-
-        elif action in ("restore", "revive"):
-            if getattr(state, "player_dead", False):
-                player.hp = player.effective_max_hp
-                state.player_dead = False
-                # Reset enemy di stage yang sama agar tidak langsung maju
-                from models.enemy import Enemy
-                state.enemy = Enemy.generate(state.current_stage)
-                event_logger.emit("restore", "OPERATOR RESTORED — Retry current sector")
-                return "OPERATOR RESTORED. Sector not advanced. Enemy reset."
-            return "Operator is active. No restoration needed."
 
         elif action in ("modules", "inv", "inventory", "i"):
             agents_str = ", ".join(a.name for a in player.agents) if player.agents else "none"

@@ -21,7 +21,7 @@ def render_game_area(state: GameState):
     table.add_column("Property", style="cyan", no_wrap=True, min_width=12)
     table.add_column("Value", style="green", no_wrap=True)
 
-    table.add_row("Sector", str(state.current_stage))
+    table.add_row("Sector", f"{state.sector}.{state.substage}")
     table.add_row("Entity", f"{enemy.name} ({enemy.rarity})")
     hp_percent = max(0, enemy.hp) / enemy.max_hp if enemy.max_hp > 0 else 0
     hp_color = "green" if hp_percent > 0.5 else "yellow" if hp_percent > 0.25 else "red"

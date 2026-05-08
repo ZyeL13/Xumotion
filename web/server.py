@@ -44,7 +44,7 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
             p = game_state.player
             e = game_state.enemy
             data = {
-                "stage": game_state.current_stage,
+                "stage": f"{game_state.sector}.{game_state.substage}",
                 "kills": game_state.kills_in_stage,
                 "player": {
                     "level": p.level,
