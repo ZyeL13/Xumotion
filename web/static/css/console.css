@@ -277,6 +277,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   text-transform: uppercase;
 }
 .btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-green {
   background: var(--green-dim);
   border-color: rgba(126,231,135,0.35);
@@ -310,7 +311,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .btn-sm { padding: 5px 10px; font-size: 11px; }
 .btn-full { width: 100%; justify-content: center; }
 
-.auto-active { background: var(--green-dim) !important; border-color: var(--green) !important; color: var(--green) !important; }
+.auto-active { background: var(--green-dim) !important; border-color: var(--green) !important; color: var(--green) !important; animation: pulse-auto 1s infinite; }
+@keyframes pulse-auto {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(126,231,135,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(126,231,135,0); }
+}
 
 /* STATS GRID */
 .stat-box {

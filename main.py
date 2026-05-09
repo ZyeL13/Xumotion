@@ -2,6 +2,8 @@ import asyncio
 import threading
 from dotenv import load_dotenv
 load_dotenv()
+from game.database import init_db
+init_db()
 
 # ruff: noqa: E402
 from game.state import GameState
@@ -12,7 +14,7 @@ from models.enemy import Enemy
 from interfaces.telegram_bot import TelegramBot
 from game.offline import calculate_offline_reward
 from systems.daily import can_claim
-# from web.server import start_web
+from web.server import start_web
 
 
 def main():
@@ -20,7 +22,7 @@ def main():
     if state is None:
         state = GameState(
             player=Player(),
-            enemy=Enemy.generate(stage=1),
+            enemy=Enemy.generate(sector=1, substage=1, player=Player()),
             offline_message="SYSTEMS ONLINE.",
         )
     else:
@@ -30,7 +32,7 @@ def main():
         state.offline_message += " | Cycle deposit available. /cycle"
 
     # Start web dashboard
-#    start_web(state)
+    start_web(state)
 
     # Start game loop in background thread
     game_thread = threading.Thread(target=game_loop, args=(state,), daemon=True)

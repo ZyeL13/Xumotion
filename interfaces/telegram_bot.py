@@ -14,9 +14,13 @@ import asyncio
 from telegram import Update, BotCommand, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from game.engine import process_command
-from game.state import GameState
 from game.event_logger import event_logger
 from systems.progression import required_exp
+from game.state import GameState
+from models.enemy import Enemy
+from models.player import Player
+from game.save_manager import load_game, save_game
+from game.offline import calculate_offline_reward
 
 TELEGRAM_TOKEN = os.environ.get("RPG_BOT_TOKEN", "")
 ADMIN_IDS_STR = os.environ.get("TELEGRAM_ADMIN_IDS", "")
@@ -45,6 +49,32 @@ def _build_main_keyboard() -> ReplyKeyboardMarkup:
         one_time_keyboard=False,
         selective=False
     )
+
+
+def _get_or_create_game_state(user_id: int) -> GameState:
+    from game.database import init_db, get_or_create_user
+    from models.player import Player
+    from models.enemy import Enemy
+    from game.save_manager import load_game
+    
+    init_db()
+    user_db_id = get_or_create_user(user_id, username=str(user_id))
+    
+    state = load_game(user_db_id)
+    if state is None:
+        # Buat player dummy untuk generate enemy
+        dummy_player = Player()
+        state = GameState(
+            player=dummy_player,
+            enemy=Enemy.generate(1, 1, dummy_player),  # Perbaiki: (sector, substage, player)
+            user_id=user_db_id,
+            offline_message="SYSTEMS ONLINE.",
+        )
+    else:
+        from game.offline import calculate_offline_reward
+        calculate_offline_reward(state)
+    
+    return state
 
 
 def _build_cancel_keyboard() -> ReplyKeyboardMarkup:
@@ -141,14 +171,24 @@ class TelegramBot:
         """
         # --- Main /start ---
         async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                await update.message.reply_text("Error: User not found.")
+                return
+            user_id = user.id
+            # Muat state game untuk user ini
+            self.state = _get_or_create_game_state(user_id)
             user_sessions[user_id] = {"mode": None, "screen": "main_menu"}
             await update.message.reply_text("SYSTEM ONLINE\n\n" + self._format_stats(),
                                             reply_markup=_build_main_keyboard())
 
         # --- /status ---
         async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)  # Pastikan state terbaru
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "status", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -163,7 +203,11 @@ class TelegramBot:
 
         # --- /agent ---
         async def agent_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "agent", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -180,7 +224,11 @@ class TelegramBot:
 
         # --- /module ---
         async def module_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "module", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -196,7 +244,11 @@ class TelegramBot:
 
         # --- /upgrade ---
         async def upgrade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "upgrade", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -204,7 +256,7 @@ class TelegramBot:
                     [KeyboardButton("Upgrade ATK"), KeyboardButton("Upgrade DEF")],
                     [KeyboardButton("Upgrade HP"), KeyboardButton("Upgrade CRIT")],
                     [KeyboardButton("Back")]
-                ],
+               ],
                 resize_keyboard=True,
                 one_time_keyboard=False
             )
@@ -212,7 +264,11 @@ class TelegramBot:
 
         # --- /progress ---
         async def progress_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "progress", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -228,7 +284,11 @@ class TelegramBot:
 
         # --- /system ---
         async def system_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+               return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             prev = user_sessions.get(user_id, {}).get("screen", "main_menu")
             user_sessions[user_id] = {"mode": None, "screen": "system", "prev_screen": prev}
             keyboard = ReplyKeyboardMarkup(
@@ -244,6 +304,11 @@ class TelegramBot:
 
         # --- /help ---
         async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             text = (
                 "📋 XUMOTION — SYSTEMS CONSOLE\n\n"
                 "Gunakan tombol di keyboard bawah untuk navigasi.\n\n"
@@ -260,13 +325,22 @@ class TelegramBot:
 
         # --- /cancel ---
         async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)
             user_sessions[user_id] = {"mode": None, "screen": "main_menu"}
             await update.message.reply_text("Operation cancelled.", reply_markup=_build_main_keyboard())
 
         # --- Text handler for input mode & keyboard buttons ---
         async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            user_id = update.effective_user.id
+            user = update.effective_user
+            if user is None:
+                return
+            user_id = user.id
+            self.state = _get_or_create_game_state(user_id)  # Pastikan state terbaru
+
             session = user_sessions.get(user_id)
             if session is None:
                 session = {"mode": None, "screen": "main_menu"}
@@ -280,11 +354,8 @@ class TelegramBot:
                 session["mode"] = None
 
                 if was_in_mode:
-                    # User menekan Back saat awaiting input (e.g. setelah pencet Install).
-                    # Kembali ke sub-menu saat ini, bukan prev_screen.
                     target = session.get("screen", "main_menu")
                 else:
-                    # User menekan Back dari sub-menu biasa → naik satu level.
                     target = session.pop("prev_screen", "main_menu")
                     session["screen"] = target
 

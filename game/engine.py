@@ -196,7 +196,7 @@ def process_command(state: GameState, cmd: str) -> str:
             return "\n".join(lines)
 
         elif action in ("checkpoint", "save", "s"):
-            save_game(state)
+            save_game(state, state.user_id)
             return "CHECKPOINT SAVED."
 
         elif action in ("shutdown", "quit", "q", "exit"):
@@ -232,7 +232,7 @@ def game_loop(state: GameState):
                 msgs = autobuy_tick(state)
                 for msg in msgs:
                     event_logger.emit("auto_enhance", msg)
-                save_game(state)
+                save_game(state, state.user_id)  # <-- KIRIM USER ID
                 print("[LOOP] Tick done. Releasing lock.")
             last_tick = now
 

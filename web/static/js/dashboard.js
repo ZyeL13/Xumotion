@@ -192,7 +192,7 @@ async function fetchState() {
 function updateDashboardFromGame(data) {
   // topbar
   if ($crVal) $crVal.textContent = data.player.gold.toLocaleString();
-  if ($shVal) $shVal.textContent = (data.player.core_points || 0).toLocaleString();
+  if ($shVal) $shVal.textContent = (data.player.shards || 0).toLocaleString();
   
   // sector
   if ($sectorName) $sectorName.textContent = `SECTOR ${data.stage}`;
@@ -281,8 +281,7 @@ function updateModulesFromGame(inventory) {
   
   if ($ownedModules) $ownedModules.textContent = `${inventory.length} OWNED`;
   
-  // filter hanya modul terpasang atau semua? Tampilkan semua.
-  $modulesGrid.innerHTML = inventory.map(mod => `
+  $modulesGrid.innerHTML = inventory.map((mod, index) => `
     <div class="module-card ${mod.installed ? 'equipped' : ''}">
       <div class="module-icon">⚙️</div>
       <div class="module-name">${mod.name}</div>
@@ -296,7 +295,7 @@ function updateModulesFromGame(inventory) {
       <div class="module-slot">${mod.slot} SLOT</div>
       <div class="module-btns">
         <button class="btn ${mod.installed ? 'btn-red' : 'btn-blue'} btn-sm" 
-                onclick="sendCommand('${mod.installed ? 'uninstall ' + mod.slot : 'install ' + (inventory.indexOf(mod)+1)}')">
+                onclick="sendCommand('${mod.installed ? 'uninstall ' + mod.slot : 'install ' + (index+1)}')">
           ${mod.installed ? 'REMOVE' : 'INSTALL'}
         </button>
       </div>
@@ -305,14 +304,12 @@ function updateModulesFromGame(inventory) {
 }
 
 function updateProgressionFromGame(player) {
-  if ($rankDisplay) $rankDisplay.textContent = `RANK ${player.level}`;
-  if ($expFill) {
-    // perkiraan exp needed (ambil dari constants atau dari API jika ada)
-    const expNeed = player.exp + 1; // Fallback, seharusnya dari server
-    const pct = Math.min(100, (player.exp / expNeed) * 100);
+  if ($expFill && player.exp_needed) {
+    const pct = Math.min(100, (player.exp / player.exp_needed) * 100);
     $expFill.style.width = pct + '%';
   }
   if ($expLabel) $expLabel.textContent = player.exp.toLocaleString();
+  if ($rankDisplay) $rankDisplay.textContent = `RANK ${player.level}`;
 }
 
 // --- COMMANDS ---
@@ -350,8 +347,11 @@ document.querySelectorAll('.nav-item, .bnav-item').forEach(item => {
 });
 
 // Auto-enhance toggle
-function toggleAuto() {
-  sendCommand('auto');
+if ($autoBtn) {
+  $autoBtn.onclick = () => {
+    const isAuto = $autoBtn.classList.contains('auto-active');
+    sendCommand(isAuto ? 'auto off' : 'auto on');
+  };
 }
 
 // --- INIT ---
@@ -361,12 +361,11 @@ window.addEventListener('load', () => {
   setInterval(fetchState, STATE_INTERVAL);
   fetchState(); // initial load
   
-  // Handle modals (simplified) – we rely on toasts and direct commands,
-  // but keep modal system if needed for complex interactions.
-  // For now, we'll intercept clicks on elements with data-command
+  // Handle commands for elements with data-command
   document.addEventListener('click', e => {
     const btn = e.target.closest('[data-command]');
     if (btn) {
+      if (btn.id === 'auto-btn') return; // Handled separately
       e.preventDefault();
       sendCommand(btn.dataset.command);
     }

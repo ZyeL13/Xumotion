@@ -4,6 +4,9 @@ import time
 from models.player import Player
 from game.state import GameState
 
+SAVE_PATH = "saves/savegame.json"
+CURRENT_VERSION = 2
+
 def _validate_player_save(data: dict) -> bool:
     """Validate save data against hard limits based on current stage."""
     player = data.get("player", {})
@@ -36,30 +39,22 @@ def _validate_player_save(data: dict) -> bool:
 
     return True
 
-SAVE_PATH = "saves/savegame.json"
-CURRENT_VERSION = 2   # naikkan versi
+def save_game(state: GameState, user_id: int = None):
+    """Menyimpan state game. Jika user_id diberikan, simpan ke database. Jika tidak, gunakan JSON."""
+    if user_id is not None:
+        from game.database import save_game_state
+        state_data = {
+            'sector': state.sector,
+            'substage': state.substage,
+            'boss_active': state.boss_active,
+            'boss_timer': state.boss_timer,
+            'kills_in_stage': state.kills_in_stage,
+            'player': state.player.to_dict(),
+        }
+        save_game_state(user_id, state_data)
+        return
 
-
-def _migrate_legacy(data: dict):
-    """Migrasi save dari format lama (current_stage: int) ke format checkpoint."""
-    if "current_stage" in data:
-        stage = data.pop("current_stage")
-        sector = ((stage - 1) // 10) + 1
-        substage = ((stage - 1) % 10) + 1
-        data["sector"] = sector
-        data["substage"] = substage
-        data["boss_active"] = (substage == 10)
-        data["boss_timer"] = 0.0
-        # Hapus prime_timer jika ada
-        data.pop("prime_timer", None)
-    # pastikan field baru ada
-    data.setdefault("sector", 1)
-    data.setdefault("substage", 1)
-    data.setdefault("boss_active", False)
-    data.setdefault("boss_timer", 0.0)
-
-
-def save_game(state: GameState):
+    # Fallback ke JSON
     data = {
         "version": CURRENT_VERSION,
         "player": state.player.to_dict(),
@@ -79,10 +74,33 @@ def save_game(state: GameState):
     with open(SAVE_PATH, "w") as f:
         json.dump(data, f, indent=2)
 
-
-def load_game() -> GameState | None:
+def load_game(user_id: int = None) -> GameState | None:
+    """Memuat state game. Jika user_id diberikan, muat dari database. Jika tidak, gunakan JSON."""
     from models.enemy import Enemy
 
+    if user_id is not None:
+        from game.database import load_game_state, init_db
+        init_db()
+        data = load_game_state(user_id)
+        if data is None:
+            return None
+        
+        player = Player.from_dict(data['player_data'])
+        enemy = Enemy.generate(data['sector'], data['substage'], player)  # PERBAIKAN: gunakan data['sector'], bukan state.sector
+
+        state = GameState(
+            player=player,
+            enemy=enemy,
+            sector=data['sector'],
+            substage=data['substage'],
+            boss_active=data['boss_active'],
+            boss_timer=data['boss_timer'],
+            kills_in_stage=data['kills_in_stage'],
+            last_save=time.time(),
+        )
+        return state
+
+    # Fallback ke JSON
     if not os.path.exists(SAVE_PATH):
         return None
 
@@ -97,13 +115,8 @@ def load_game() -> GameState | None:
         return None
 
     version = data.get("version", 0)
-
-    # Migrasi jika perlu
-    if version < 2:
-        _migrate_legacy(data)
-    elif version == 2:
-        # Sudah format baru
-        pass
+    if version < CURRENT_VERSION:
+        _migrate(data, version)
 
     player = Player.from_dict(data["player"])
     enemy_data = data.get("enemy")
@@ -121,7 +134,5 @@ def load_game() -> GameState | None:
     )
     return state
 
-
 def _migrate(data: dict, from_version: int):
-    # Akan kita gunakan _migrate_legacy di atas
     pass

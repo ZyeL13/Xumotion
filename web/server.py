@@ -26,9 +26,17 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
 
     def do_GET(self):
+        from urllib.parse import parse_qs
         parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+    
+        # Untuk sementara, ambil user_id dari query parameter
+        user_id = params.get('user_id', [None])[0]
+        if user_id:
+            user_id = int(user_id)
+    
         if parsed.path == "/api/state":
-            self._api_state()
+            self._api_state(user_id)
         else:
             super().do_GET()
 
@@ -39,7 +47,14 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    def _api_state(self):
+    def _api_state(self, user_id=None):
+        if user_id:
+            state = load_game(user_id)
+            if state is None:
+                self.send_error(404, "Game state not found")
+                return
+        else:
+           state = game_state  # fallback ke global state
         with game_state.lock:
             p = game_state.player
             e = game_state.enemy
@@ -49,6 +64,7 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
                 "player": {
                     "level": p.level,
                     "exp": p.exp,
+                    "exp_needed": required_exp(p.level, LEVEL_EXP_BASE, LEVEL_EXP_GROWTH),
                     "hp": p.hp,
                     "max_hp": p.effective_max_hp,
                     "atk": p.atk,
@@ -57,16 +73,29 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
                     "crit_rate": p.crit_rate,
                     "crit_damage": p.crit_damage,
                     "gold": p.gold,
-                    "shards": p.core_points,          # shards sebagai core_points
+                    "shards": p.core_points,
+                    "auto_enhance": getattr(p, "auto_enhance", False),
                     "agents": [
                         {
-                            "id": i + 1,
+                            "id": a.id if hasattr(a, 'id') else i + 1,
                             "name": a.name,
                             "tier": a.tier,
                             "level": a.level,
                             "dps": a.dps,
                             "deployed": a.deployed
                         } for i, a in enumerate(p.agents)
+                    ],
+                    "inventory": [
+                        {
+                            "name": m.name,
+                            "rarity": m.rarity.value if hasattr(m.rarity, 'value') else m.rarity,
+                            "slot": m.slot.value if hasattr(m.slot, 'value') else m.slot,
+                            "installed": m.installed,
+                            "atk_bonus": getattr(m, 'atk_bonus', 0),
+                            "def_bonus": getattr(m, 'def_bonus', 0),
+                            "hp_bonus": getattr(m, 'hp_bonus', 0),
+                            "crit_rate_bonus": getattr(m, 'crit_rate_bonus', 0),
+                        } for m in p.inventory
                     ],
                     "inventory_count": len(p.inventory),
                     "max_agent_slots": p.max_agent_slots,
@@ -96,15 +125,20 @@ class ConsoleHandler(http.server.SimpleHTTPRequestHandler):
             if remote not in ("127.0.0.1", "localhost", "::1"):
                 self.send_error(403, "API not exposed to network")
                 return
-    
-        # === Tambahkan lock di sini ===
-        with game_state.lock:
-            content_len = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_len)
+
+        # Read body OUTSIDE the lock to prevent blocking the game loop
+        content_len = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_len)
+        try:
             cmd = json.loads(body)
-            from game.engine import process_command
-            result = process_command(game_state, cmd.get("text", ""))
-            self._json_response({"response": result})
+        except json.JSONDecodeError:
+            self.send_error(400, "Invalid JSON")
+            return
+
+        from game.engine import process_command
+        # process_command already handles state.lock internally
+        result = process_command(game_state, cmd.get("text", ""))
+        self._json_response({"response": result})
 
     def _json_response(self, data):
         self.send_response(200)

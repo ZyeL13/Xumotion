@@ -16,6 +16,7 @@ class GameState:
     substage: int = 1              # 1..10 (10 = boss)
     boss_active: bool = False
     boss_timer: float = 0.0        # detik tersisa saat boss fight
+    user_id: int = 0
     kills_in_stage: int = 0
     last_save: float = 0.0
     running: bool = True
