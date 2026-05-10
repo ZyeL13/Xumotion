@@ -1,11 +1,11 @@
 {
   "rewards": [
-    {"day": 1, "gold": 50},
-    {"day": 2, "gold": 100},
-    {"day": 3, "gold": 150},
-    {"day": 4, "gold": 200},
-    {"day": 5, "gold": 300},
-    {"day": 6, "gold": 400},
-    {"day": 7, "gold": 600}
+    {"day": 1, "input_credits": 50},
+    {"day": 2, "input_credits": 100},
+    {"day": 3, "input_credits": 150},
+    {"day": 4, "input_credits": 200},
+    {"day": 5, "input_credits": 300},
+    {"day": 6, "input_credits": 400},
+    {"day": 7, "input_credits": 600}
   ]
 }

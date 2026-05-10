@@ -14,99 +14,96 @@ def tick_combat(state):
     if getattr(state, "player_dead", False):
         return
 
-    # Player deal damage
+    # Auto-regen: heal 1% max HP per tick
+    regen = max(1, int(player.effective_max_hp * 0.01))
+    player.hp = min(player.effective_max_hp, player.hp + regen)
+
+    # === BOSS CHECK: skip auto-combat, player must tap ===
+    if state.boss_active:
+        # Boss timer ticks down
+        if state.boss_timer > 0.0:
+            state.boss_timer -= 1.0
+            if state.boss_timer <= 0.0:
+                # Boss timed out
+                state.boss_active = False
+                state.boss_timer = 0.0
+                event_logger.emit("checkpoint_failed",
+                    f"CHECKPOINT FAILED — Timeout. Sector {state.sector} Boss remains. Use Start to retry.")
+        # Do NOT auto-fight boss
+        return
+
+    # === NORMAL COMBAT ===
+    # Player deals damage
     damage = combat_damage(player.atk, player.dps, enemy.defense)
     damage = apply_crit(damage, player.crit_rate, player.crit_damage)
     enemy.hp = max(0, enemy.hp - damage)
 
-    # Enemy attacks back (only if enemy alive)
+    # Enemy attacks back (only if enemy still alive)
     if enemy.hp > 0:
         enemy_dmg = enemy_damage(enemy.atk, int(player.effective_def))
         player.hp = max(0, player.hp - enemy_dmg)
 
-        # Check player death
+        # Player death check
         if player.hp <= 0:
-            state.player_dead = True
-            if state.boss_active:
-                # Boss fight: gagal total
-                state.boss_active = False
-                state.boss_timer = 0.0
-                event_logger.emit("checkpoint_failed", f"CHECKPOINT FAILED — Sector {state.sector} Boss remains. Use /next to retry.")
-                return
-            else:
-                # Normal encounter: auto‑respawn
-                player.hp = player.effective_max_hp
-                state.player_dead = False
-                from models.enemy import Enemy
-                state.enemy = Enemy.generate(state.sector, state.substage, state.player)
-                event_logger.emit("operator_down", f"OPERATOR DOWN — Auto‑recovered at Sector {state.sector} · {state.substage}/10")
-                return
-
-    # Boss timer check (only when active)
-    if state.boss_active and state.boss_timer > 0.0:
-        state.boss_timer -= 1.0  # tick adalah 1 detik
-        if state.boss_timer <= 0.0:
-            state.boss_active = False
-            state.boss_timer = 0.0
-            event_logger.emit("checkpoint_failed", f"CHECKPOINT FAILED — Timeout. Sector {state.sector} Boss remains. Use /next to retry.")
+            # Auto-respawn with full HP, same enemy stays
+            player.hp = player.effective_max_hp
+            event_logger.emit("operator_down",
+                f"OPERATOR DOWN — Auto‑recovered at Sector {state.sector} · {state.substage}/10")
             return
 
-    # Enemy death
+    # === ENEMY DEATH + PROGRESSION ===
     if enemy.hp <= 0:
         # Rewards
-        loot_chance = 0.5
-        if state.boss_active:
-            player.gold += int(enemy.reward_gold * 2.5)
-            player.exp += int(enemy.reward_exp * 3)
-            loot_chance = 0.9
-            state.boss_active = False
-            state.boss_timer = 0.0
-            event_logger.emit("checkpoint_cleared", f"CHECKPOINT CLEARED — Sector {state.sector} Boss defeated!")
-        else:
-            player.gold += enemy.reward_gold
-            player.exp += enemy.reward_exp
+        player.gold += enemy.reward_gold
+        player.exp += enemy.reward_exp
 
         state.kills_in_stage += 1
 
-        event_logger.emit("target_purged", f"TARGET PURGED: {enemy.name} | +{enemy.reward_gold} CREDITS +{enemy.reward_exp} EXP")
+        event_logger.emit("target_purged",
+            f"TARGET PURGED: {enemy.name} | +{enemy.reward_gold} CREDITS +{enemy.reward_exp} EXP")
 
-        # Loot drop
-        if random.random() < loot_chance:  # nosec B311
+        # Loot drop (50% chance for normal)
+        if random.random() < 0.5:  # nosec B311
             from systems.loot import generate_module
-            # gunakan sector untuk penentuan loot (bisa diadaptasi)
-            loot = generate_module(state.sector * 10)  # temporary scaling
+            loot = generate_module(state.sector * 10)
             player.inventory.append(loot)
-            event_logger.emit("module_found", f"MODULE FOUND: {loot.name} ({loot.rarity.value})")
+            event_logger.emit("module_found",
+                f"MODULE FOUND: {loot.name} ({loot.rarity.value})")
 
-        # Level up
+        # Level up check
         leveled = progression.check_level_up(player)
         if leveled:
             event_logger.emit("rank_up", f"RANK UPDATED → LVL {player.level}")
 
-        # Check achievements
+        # Achievements
         check_and_unlock(state)
 
-        # Maju ke encounter berikutnya
-        if state.substage == 10:
-            # Boss selesai → pindah sektor
+        # === PROGRESSION ===
+        if state.substage >= 10:
+            # Finished sector → move to next
             state.sector += 1
             state.substage = 1
             state.boss_active = False
             state.boss_timer = 0.0
+            event_logger.emit("sector_clear", f"SECTOR {state.sector - 1} CLEARED — Entering Sector {state.sector}")
         else:
             state.substage += 1
-            # Jika substage sekarang 10, tandai boss aktif dan setel timer
-            if state.substage == 10:
-                state.boss_active = True
-                # Pilih timer berdasarkan sektor
-                if state.sector <= 5:
-                    state.boss_timer = 60.0
-                elif state.sector <= 15:
-                    state.boss_timer = 45.0
-                else:
-                    state.boss_timer = 30.0
 
-        # Spawn musuh baru untuk encounter berikutnya
+        # === CHECK IF NEW SUBSTAGE IS BOSS (substage 10) ===
+        if state.substage == 10 and not state.boss_active:
+            state.boss_active = True
+            # Set boss timer based on sector
+            if state.sector <= 5:
+                state.boss_timer = 60.0
+            elif state.sector <= 15:
+                state.boss_timer = 45.0
+            else:
+                state.boss_timer = 30.0
+            event_logger.emit("boss_spawn",
+                f"⚠ BOSS ENCOUNTER — Sector {state.sector} · 10/10 — Tap to fight!")
+
+        # Spawn new enemy for next encounter
         from models.enemy import Enemy
         state.enemy = Enemy.generate(state.sector, state.substage, state.player)
-        event_logger.emit("new_target", f"SECTOR {state.sector} · {state.substage}/10: {state.enemy.name}")
+        event_logger.emit("new_target",
+            f"SECTOR {state.sector} · {state.substage}/10: {state.enemy.name}")

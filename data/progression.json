@@ -1,12 +1,12 @@
 {
   "level_exp": {
     "base": 20,
-    "growth": 1.2
+    "growth": 1.15
   },
   "level_up_rewards": {
-    "atk_increase": 3,
-    "atk_pct_increase": 0.005,
-    "max_hp_increase": 10
+    "atk_increase": 5,
+    "atk_pct_increase": 0.01,
+    "max_hp_increase": 25
   },
   "offline_cap_seconds": 28800,
   "prestige": {

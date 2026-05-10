@@ -47,7 +47,7 @@ class Enemy:
 
         # 4. Stat relatif terhadap pemain
         hp_rel = random.uniform(1.2, 1.8)   # nosec B311
-        atk_rel = random.uniform(0.85, 1.15) # nosec B311
+        atk_rel = random.uniform(0.3, 0.6) # nosec B311
         def_rel = random.uniform(0.8, 1.1)   # nosec B311
 
         base_hp = int(player.max_hp * hp_rel * sector_mult * encounter_mult)
@@ -57,7 +57,7 @@ class Enemy:
         # 5. Boss dibuff lebih kuat
         if is_boss:
             hp_mult = random.uniform(2.5, 3.5)   # nosec B311
-            atk_mult = random.uniform(1.4, 1.8)   # nosec B311
+            atk_mult = random.uniform(1.0, 1.3)   # nosec B311
             def_mult = random.uniform(1.3, 1.6)   # nosec B311
             hp = int(base_hp * hp_mult)
             atk = int(base_atk * atk_mult)

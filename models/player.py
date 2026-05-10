@@ -8,10 +8,10 @@ from models.module import Module
 class Player:
     level: int = 1
     exp: int = 0
-    hp: int = 100
-    max_hp: int = 100
-    atk: int = 5
-    defense: int = 1
+    hp: int = 300
+    max_hp: int = 300
+    atk: int = 50
+    defense: int = 3
     crit_rate: float = 0.05
     crit_damage: float = 1.5
     gold: int = 0
@@ -19,6 +19,7 @@ class Player:
     dps: int = 0
     inventory: list = field(default_factory=list)
     agents: List[Agent] = field(default_factory=list)
+    last_daily_claim: float = 0.0
 
     # upgrade levels
     atk_upgrade_lvl: int = 0
@@ -34,7 +35,8 @@ class Player:
     # automation
     auto_enhance: bool = False
 
-    # agent slots
+    # NEW currency
+    input_credits: int = 0
 
     def get_deployed_count(self) -> int:
         return sum(1 for a in self.agents if a.deployed)
@@ -65,11 +67,12 @@ class Player:
             "core_spent": self.core_spent,
             "recompile_count": self.recompile_count,
             "auto_enhance": self.auto_enhance,
+            "input_credits": self.input_credits,
+            "last_daily_claim": self.last_daily_claim,
         }
 
     @property
     def total_atk(self) -> int:
-        """ATK after core multiplier."""
         mult = 1.0 + (self.core_points * 0.05)
         return int(self.atk * mult)
 
@@ -111,6 +114,8 @@ class Player:
             core_spent=data.get("core_spent", 0),
             recompile_count=data.get("recompile_count", 0),
             auto_enhance=data.get("auto_enhance", False),
+            input_credits=data.get("input_credits", 0),
+            last_daily_claim=data.get("last_daily_claim", 0),
         )
         player.agents = [Agent.from_dict(a) for a in data.get("agents", [])]
         return player

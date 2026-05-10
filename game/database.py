@@ -1,12 +1,6 @@
 """
 game/database.py — SQLite database backend untuk XUMOTION.
-
-Modul ini menyediakan:
-- Inisialisasi database (tabel users, game_state)
-- Fungsi load/save state game berdasarkan user_id
-- Migrasi dari format JSON lama
 """
-
 import sqlite3
 import json
 import os
@@ -15,19 +9,21 @@ from pathlib import Path
 
 DB_PATH = "saves/xumotion.db"
 
+
 def _get_connection() -> sqlite3.Connection:
-    """Mendapatkan koneksi ke database SQLite."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging untuk performa
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
+
 def init_db():
-    """Membuat tabel jika belum ada."""
+    """Create tables and migrate columns if needed."""
     conn = _get_connection()
     cursor = conn.cursor()
-    
+
+    # Users table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +33,8 @@ def init_db():
             last_login REAL NOT NULL DEFAULT (strftime('%s', 'now'))
         )
     """)
-    
+
+    # Game state table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS game_state (
             user_id INTEGER PRIMARY KEY,
@@ -47,50 +44,75 @@ def init_db():
             boss_timer REAL NOT NULL DEFAULT 0.0,
             kills_in_stage INTEGER NOT NULL DEFAULT 0,
             player_data TEXT NOT NULL,
-            created_at REAL NOT NULL DEFAULT (strftime('%s', 'now')),
-            updated_at REAL NOT NULL DEFAULT (strftime('%s', 'now')),
+            enemy_data TEXT,
+            last_save REAL NOT NULL DEFAULT 0,
+            paused INTEGER NOT NULL DEFAULT 0,
+            input_credits INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
-    
+
+    # Migrations
+    def column_exists(table, column):
+        cursor.execute(f"PRAGMA table_info({table})")
+        return any(row[1] == column for row in cursor.fetchall())
+
+    migrations = [
+        ("paused", "INTEGER NOT NULL DEFAULT 0"),
+        ("input_credits", "INTEGER NOT NULL DEFAULT 0"),
+        ("last_save", "REAL NOT NULL DEFAULT 0"),
+        ("enemy_data", "TEXT"),
+    ]
+
+    for col_name, col_def in migrations:
+        if not column_exists("game_state", col_name):
+            cursor.execute(f"ALTER TABLE game_state ADD COLUMN {col_name} {col_def}")
+
     conn.commit()
     conn.close()
 
+
 def get_or_create_user(telegram_id: int, username: str = None) -> int:
-    """Mendapatkan user_id berdasarkan telegram_id, atau membuat user baru jika belum ada."""
+    """Get or create user, return internal user_id."""
     conn = _get_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (telegram_id,))
     row = cursor.fetchone()
-    
+
     if row:
         user_id = row['id']
-        cursor.execute("UPDATE users SET last_login = strftime('%s', 'now'), username = ? WHERE id = ?", 
-                       (username, user_id))
+        cursor.execute(
+            "UPDATE users SET last_login = strftime('%s', 'now'), username = ? WHERE id = ?",
+            (username, user_id)
+        )
     else:
-        cursor.execute("INSERT INTO users (telegram_id, username) VALUES (?, ?)", 
-                       (telegram_id, username))
+        cursor.execute(
+            "INSERT INTO users (telegram_id, username) VALUES (?, ?)",
+            (telegram_id, username)
+        )
         user_id = cursor.lastrowid
-    
+
     conn.commit()
     conn.close()
     return user_id
 
+
 def load_game_state(user_id: int) -> dict | None:
-    """Memuat state game untuk user_id tertentu dari database."""
+    """Load game state for a user."""
     conn = _get_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
-        SELECT sector, substage, boss_active, boss_timer, kills_in_stage, player_data
+        SELECT sector, substage, boss_active, boss_timer, kills_in_stage,
+               player_data, enemy_data, last_save, paused, input_credits
         FROM game_state
         WHERE user_id = ?
     """, (user_id,))
-    
+
     row = cursor.fetchone()
     conn.close()
-    
+
     if row:
         return {
             "sector": row['sector'],
@@ -99,22 +121,28 @@ def load_game_state(user_id: int) -> dict | None:
             "boss_timer": row['boss_timer'],
             "kills_in_stage": row['kills_in_stage'],
             "player_data": json.loads(row['player_data']),
-            "user_id": user_id,
+            "enemy": json.loads(row['enemy_data']) if row['enemy_data'] else None,
+            "last_save": row['last_save'],
+            "paused": bool(row['paused']),
+            "input_credits": row['input_credits'],
         }
     return None
 
+
 def save_game_state(user_id: int, state: dict) -> None:
-    """Menyimpan state game untuk user_id tertentu ke database."""
+    """Save game state for a user."""
     conn = _get_connection()
     cursor = conn.cursor()
-    
-    # state['player'] sudah berupa dict dari save_manager.py
-    player_data = state['player']
-    player_json = json.dumps(player_data)
-    
+
+    player_json = json.dumps(state['player'])
+    enemy_json = json.dumps(state.get('enemy')) if state.get('enemy') else None
+
     cursor.execute("""
-        INSERT INTO game_state (user_id, sector, substage, boss_active, boss_timer, kills_in_stage, player_data)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO game_state (
+            user_id, sector, substage, boss_active, boss_timer,
+            kills_in_stage, player_data, enemy_data, last_save, paused, input_credits
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             sector = excluded.sector,
             substage = excluded.substage,
@@ -122,7 +150,10 @@ def save_game_state(user_id: int, state: dict) -> None:
             boss_timer = excluded.boss_timer,
             kills_in_stage = excluded.kills_in_stage,
             player_data = excluded.player_data,
-            updated_at = strftime('%s', 'now')
+            enemy_data = excluded.enemy_data,
+            last_save = excluded.last_save,
+            paused = excluded.paused,
+            input_credits = excluded.input_credits
     """, (
         user_id,
         state.get('sector', 1),
@@ -130,31 +161,33 @@ def save_game_state(user_id: int, state: dict) -> None:
         int(state.get('boss_active', False)),
         state.get('boss_timer', 0.0),
         state.get('kills_in_stage', 0),
-        player_json
+        player_json,
+        enemy_json,
+        state.get('last_save', time.time()),
+        int(state.get('paused', False)),
+        state.get('input_credits', 0),
     ))
-    
+
     conn.commit()
     conn.close()
 
+
 def migrate_json_to_db():
-    """Migrasi data dari savegame.json lama ke database (hanya untuk user default)."""
+    """Migrate legacy JSON save to SQLite."""
     json_path = Path("saves/savegame.json")
     if not json_path.exists():
-        print("No legacy savegame.json found. Skipping migration.")
+        print("No legacy savegame.json found.")
         return
 
     try:
         with open(json_path, 'r') as f:
             data = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        print("Legacy save file corrupted. Skipping migration.")
+        print("Legacy save corrupted.")
         return
 
-    # Buat user dummy untuk migrasi
-    legacy_telegram_id = 0  # Bisa diganti dengan ID Telegram admin
-    user_id = get_or_create_user(legacy_telegram_id, "legacy_user")
+    user_id = get_or_create_user(0, "legacy_user")
 
-    # Konversi data lama ke format state game baru
     old_stage = data.get('current_stage', 1)
     sector = ((old_stage - 1) // 10) + 1
     substage = ((old_stage - 1) % 10) + 1
@@ -165,11 +198,12 @@ def migrate_json_to_db():
         'boss_active': data.get('boss_active', False),
         'boss_timer': data.get('boss_timer', 0.0),
         'kills_in_stage': data.get('kills_in_stage', 0),
-        'player': data.get('player', {}),  # Ini perlu diubah ke objek Player yang sesungguhnya
+        'player': data.get('player', {}),
+        'enemy': data.get('enemy'),
+        'last_save': time.time(),
+        'paused': False,
+        'input_credits': 0,
     }
-    # Perlu mengonversi player_data ke objek Player yang sesungguhnya
-    # Untuk sementara, kita simpan sebagai dict dan biarkan save_manager yang menangani
-    # (Ini adalah pekerjaan rumah untuk fase berikutnya)
 
     save_game_state(user_id, state)
-    print(f"Migrated legacy save data to user {user_id}")
+    print(f"Migrated legacy save to user {user_id}")

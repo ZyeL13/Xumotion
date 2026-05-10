@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class GameState:
     player: Player
     enemy: Enemy
-    sector: int = 1                # <-- ganti current_stage
+    sector: int = 1
     substage: int = 1              # 1..10 (10 = boss)
     boss_active: bool = False
     boss_timer: float = 0.0        # detik tersisa saat boss fight
@@ -24,4 +24,4 @@ class GameState:
     output_message: str = ""
     lock: threading.RLock = field(default_factory=threading.RLock)
     player_dead: bool = False
-    # prime_timer dihapus
+    paused: bool = False           # NEW: suspend runtime

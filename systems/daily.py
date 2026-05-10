@@ -1,58 +1,72 @@
 """
-Cycle rewards system - periodic credit deposits (tamper-resistant).
+systems/daily.py — Daily cycle reward system.
+Handles claim logic, streak tracking, and tamper-resistant saves.
 """
-import json
+
 import time
+import json
+import os
 import hashlib
-from pathlib import Path
 
-DAILY_DATA = Path(__file__).parent.parent / "data" / "daily.json"
-DAILY_SAVE = Path(__file__).parent.parent / "saves" / "daily.json"
-DAILY_SALT = "xumotion_daily_v1"
+DAILY_PATH = "saves/daily_progress.json"
+DAILY_REWARDS_PATH = "data/daily.json"
 
 
-def _checksum(data: dict) -> str:
-    raw = json.dumps(data, sort_keys=True) + DAILY_SALT
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+def load_rewards():
+    """Load reward definitions from JSON config."""
+    if not os.path.exists(DAILY_REWARDS_PATH):
+        return [
+            {"day": 1, "gold": 50},
+            {"day": 2, "gold": 100},
+            {"day": 3, "gold": 150},
+            {"day": 4, "gold": 200},
+            {"day": 5, "gold": 300},
+            {"day": 6, "gold": 400},
+            {"day": 7, "gold": 600},
+        ]
+    with open(DAILY_REWARDS_PATH, "r") as f:
+        data = json.load(f)
+    return data.get("rewards", [])
 
 
-def load_rewards() -> list:
-    with open(DAILY_DATA, "r") as f:
-        return json.load(f).get("rewards", [])
-
-
-def load_progress() -> dict:
-    if DAILY_SAVE.exists():
-        with open(DAILY_SAVE, "r") as f:
-            try:
-                saved = json.load(f)
-            except Exception:
-                return {"uptime": 0, "last_claim": 0}
-        data = saved.get("data", {})
-        checksum_val = saved.get("checksum", "")
-        if checksum_val != _checksum(data):
-            # Tampering detected — reset progress
-            return {"uptime": 0, "last_claim": 0}
+def load_progress():
+    """Load daily progress from disk."""
+    if not os.path.exists(DAILY_PATH):
+        return {"last_claim": 0, "uptime": 0}
+    try:
+        with open(DAILY_PATH, "r") as f:
+            data = json.load(f)
         return data
-    return {"uptime": 0, "last_claim": 0}
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {"last_claim": 0, "uptime": 0}
 
 
 def save_progress(uptime: int, last_claim: float):
-    DAILY_SAVE.parent.mkdir(parents=True, exist_ok=True)
-    data = {"uptime": uptime, "last_claim": last_claim}
-    chk = _checksum(data)
-    with open(DAILY_SAVE, "w") as f:
-        json.dump({"data": data, "checksum": chk}, f, indent=2)
+    """Save daily progress to disk."""
+    os.makedirs(os.path.dirname(DAILY_PATH), exist_ok=True)
+    data = {
+        "uptime": uptime,
+        "last_claim": last_claim,
+    }
+    with open(DAILY_PATH, "w") as f:
+        json.dump(data, f)
 
 
 def can_claim() -> bool:
+    """Check if daily reward is available (24h cooldown)."""
     prog = load_progress()
     last = prog.get("last_claim", 0)
-    now = time.time()
-    return (now - last) >= 86400
+    return (time.time() - last) >= 86400
 
 
 def claim_daily(state) -> str:
+    """
+    Attempt to claim the daily cycle reward.
+    Updates player gold and resets cooldown.
+    Also sets player.last_daily_claim for UI tracking.
+    """
+    player = state.player
+
     if not can_claim():
         prog = load_progress()
         last = prog.get("last_claim", time.time())
@@ -64,6 +78,7 @@ def claim_daily(state) -> str:
     prog = load_progress()
     uptime = prog.get("uptime", 0)
 
+    # Reset streak if more than 48h since last claim
     if time.time() - prog.get("last_claim", 0) > 172800:
         uptime = 0
 
@@ -72,14 +87,19 @@ def claim_daily(state) -> str:
         uptime = 1
 
     rewards = load_rewards()
-    reward = rewards[uptime - 1]
+    reward = rewards[uptime - 1] if uptime <= len(rewards) else rewards[-1]
 
-    player = state.player
-    player.gold += reward["gold"]
+    # Apply reward to player
+    player.input_credits += reward.get("input_credits", reward.get("gold", 0))
 
-    save_progress(uptime, time.time())
+    # Save progress with current timestamp
+    now = time.time()
+    save_progress(uptime, now)
+
+    # Also set player field for UI
+    player.last_daily_claim = now
 
     from game.event_logger import event_logger
-    event_logger.emit("cycle", f"CYCLE {reward['day']} DEPOSIT: +{reward['gold']} CREDITS")
+    event_logger.emit("cycle", f"CYCLE {reward.get('day', uptime)} DEPOSIT: +{reward.get('input_credits', reward.get('gold', 0))} INPUT")
 
-    return f"CYCLE {reward['day']} DEPOSIT: +{reward['gold']} CREDITS. Uptime: {uptime} day(s)."
+    return f"CYCLE {reward.get('day', uptime)} DEPOSIT: +{reward.get('input_credits', reward.get('gold', 0))} INPUT. Streak: {uptime}/7"

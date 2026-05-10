@@ -1,373 +1,432 @@
 // ═══════════════════════════════════════════
-// XUMOTION — Systems Console Dashboard
-// Real-time, event-driven, zero mock data
+// XUMOTION — Idle Agent Dashboard v2
 // ═══════════════════════════════════════════
 
 // --- CONFIG ---
-const WS_URL = `ws://${location.hostname}:8081`;
-const STATE_INTERVAL = 2000;   // polling state tiap 2 detik
-const BUFFER_INTERVAL = 2500;  // agregasi event tiap 2.5 detik
-const TYPE_SPEED = 18;         // ms per karakter
+const STATE_INTERVAL = 2000;
+let currentUser = 0;
+let gameState = null;
+let mergeSlots = [null, null, null];
+let eventQueue = [];
 
-// --- GLOBAL STATE ---
-let eventBuffer = [];          // buffer untuk event masuk
-let typingQueue = [];          // antrian pesan yang akan diketik
-let isTyping = false;           // lock agar tidak ada dua typing bersamaan
-let previousState = {};
+function getUserId() {
+  try {
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+      return window.Telegram.WebApp.initDataUnsafe.user.id;
+    }
+  } catch(e) {}
+  const params = new URLSearchParams(location.search);
+  return parseInt(params.get('user_id')) || 0;
+}
 
 // --- DOM REFS ---
-const $crVal         = document.getElementById('cr-val');
-const $shVal         = document.getElementById('sh-val');
-const $sectorName    = document.getElementById('sector-name');
-const $entityName    = document.getElementById('entity-name');
-const $integrityPct  = document.querySelector('.integrity-label .pct');
-const $integrityBar  = document.getElementById('integrity-bar');
-const $targetGold    = document.getElementById('target-gold');
-const $targetExp     = document.getElementById('target-exp');
-const $statAtk       = document.getElementById('stat-atk');
-const $statDps       = document.getElementById('stat-dps');
-const $statDef       = document.getElementById('stat-def');
-const $statCrit      = document.getElementById('stat-crit');
-const $statHp        = document.getElementById('stat-hp');
-const $statAgents    = document.getElementById('stat-agents');
-const $agentsGrid    = document.getElementById('agents-grid');
-const $modulesGrid   = document.getElementById('modules-grid');
-const $eventStream   = document.getElementById('event-stream');
-const $deployedCount = document.getElementById('deployed-count');
-const $ownedModules  = document.getElementById('owned-modules');
-const $agentsMiniList= document.getElementById('agents-mini-list');
-const $autoBtn       = document.getElementById('auto-btn');
-const $expFill       = document.getElementById('exp-fill');
-const $expLabel      = document.querySelector('.exp-label strong');
-const $rankDisplay   = document.querySelector('.rank-display');
-const $milestones    = document.getElementById('milestones');
-const $unlockGrid    = document.getElementById('unlock-grid');
-const $invList       = document.getElementById('inv-list');
+const $ = (id) => document.getElementById(id);
 
-// --- UI UTILS ---
-function showToast(text, type = 'info') {
-  // Sederhana: tampilkan notifikasi kecil di atas
-  const toast = document.createElement('div');
-  toast.className = `notification toast-${type}`;
-  toast.textContent = text;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-// --- TYPING EFFECT ENGINE ---
-async function typeText(element, text, speed = TYPE_SPEED) {
-  for (const char of text) {
-    element.appendChild(document.createTextNode(char));
-    await new Promise(r => setTimeout(r, speed + Math.random() * 10));
-  }
-}
-
-async function processTypingQueue() {
-  if (isTyping || typingQueue.length === 0) return;
-  isTyping = true;
-  
-  const message = typingQueue.shift();
-  const entryDiv = document.createElement('div');
-  entryDiv.className = 'event-card';
-  
-  // time
-  const timeSpan = document.createElement('span');
-  timeSpan.className = 'event-time';
-  timeSpan.textContent = new Date().toLocaleTimeString();
-  entryDiv.appendChild(timeSpan);
-  
-  // body
-  const bodyDiv = document.createElement('div');
-  bodyDiv.className = 'event-body';
-  entryDiv.appendChild(bodyDiv);
-  
-  // dot indicator
-  const dot = document.createElement('div');
-  dot.className = 'event-dot';
-  dot.style.background = 'var(--green)';
-  entryDiv.appendChild(dot);
-  
-  // type detail
-  const detailDiv = document.createElement('div');
-  detailDiv.className = 'event-detail';
-  bodyDiv.appendChild(detailDiv);
-  
-  // insert to feed
-  const feed = document.getElementById('event-stream');
-  if (feed) {
-    feed.insertBefore(entryDiv, feed.firstChild);
-    // max 30 entries
-    while (feed.children.length > 30) feed.lastChild.remove();
-  }
-  
-  // animate typing
-  const cursorSpan = document.createElement('span');
-  cursorSpan.className = 'stream-cursor';
-  entryDiv.appendChild(cursorSpan);
-  
-  await typeText(detailDiv, message);
-  
-  // remove cursor
-  if (cursorSpan.parentNode) cursorSpan.remove();
-  
-  isTyping = false;
-  // process next after a short pause
-  setTimeout(processTypingQueue, 400);
-}
-
-function addToTypingQueue(message) {
-  typingQueue.push(message);
-  processTypingQueue();
-}
-
-// --- WEBSOCKET EVENT HANDLER ---
-function connectWebSocket() {
-  const ws = new WebSocket(WS_URL);
-  
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      eventBuffer.push(data);
-    } catch (e) {
-      console.error('WS parse error:', e);
-    }
-  };
-  
-  ws.onclose = () => {
-    // reconnect after 5 detik
-    setTimeout(connectWebSocket, 5000);
-  };
-  
-  ws.onerror = (err) => {
-    console.error('WebSocket error:', err);
-    ws.close();
-  };
-}
-
-// Agregasi buffer
-function processEventBuffer() {
-  if (eventBuffer.length === 0) return;
-  
-  const aggregated = new Map();
-  
-  for (const ev of eventBuffer) {
-    const key = `${ev.type}|${ev.message}`;
-    if (aggregated.has(key)) {
-      aggregated.get(key).count++;
-    } else {
-      aggregated.set(key, { ...ev, count: 1 });
-    }
-  }
-  
-  // clear buffer
-  eventBuffer = [];
-  
-  // add to typing queue
-  for (const [, aggr] of aggregated) {
-    let msg = aggr.message;
-    if (aggr.count > 1) {
-      msg += ` (x${aggr.count})`;
-    }
-    addToTypingQueue(msg);
-  }
-}
-
-// --- DATA FETCHING ---
+// --- API ---
 async function fetchState() {
   try {
-    const res = await fetch('/api/state');
-    if (!res.ok) throw new Error('Network response was not ok');
-    const data = await res.json();
-    updateDashboardFromGame(data);
-    updateAgentsFromGame(data.player.agents);
-    updateModulesFromGame(data.player.inventory || []);
-    updateProgressionFromGame(data.player);
-    previousState = data.player;
-  } catch (e) {
-    console.error('fetchState error:', e);
+    const res = await fetch(`/api/v1/state?user_id=${currentUser}`);
+    if (!res.ok) throw new Error('Status ' + res.status);
+    gameState = await res.json();
+    updateAllUI();
+  } catch(e) {
+    console.error('fetchState:', e);
   }
 }
 
-// --- UPDATE DASHBOARD UI ---
-function updateDashboardFromGame(data) {
-  // topbar
-  if ($crVal) $crVal.textContent = data.player.gold.toLocaleString();
-  if ($shVal) $shVal.textContent = (data.player.shards || 0).toLocaleString();
-  
-  // sector
-  if ($sectorName) $sectorName.textContent = `SECTOR ${data.stage}`;
-  if ($entityName) $entityName.textContent = data.enemy.name;
-  
-  // integrity
-  const hpPct = data.enemy.hp / data.enemy.max_hp * 100;
-  if ($integrityPct) $integrityPct.textContent = Math.round(hpPct) + '%';
-  if ($integrityBar) $integrityBar.style.width = hpPct + '%';
-  
-  if ($targetGold) $targetGold.textContent = data.enemy.reward_gold;
-  if ($targetExp) $targetExp.textContent = data.enemy.reward_exp;
-  
-  // stats grid
-  if ($statAtk) $statAtk.textContent = data.player.atk;
-  if ($statDps) $statDps.textContent = data.player.dps;
-  if ($statDef) $statDef.textContent = data.player.defense;
-  if ($statCrit) $statCrit.textContent = (data.player.crit_rate * 100).toFixed(1) + '%';
-  if ($statHp) $statHp.textContent = `${data.player.hp}/${data.player.max_hp}`;
-  if ($statAgents) $statAgents.textContent = `${data.player.agents?.filter(a => a.deployed).length || 0} / ${data.player.max_agent_slots || 0}`;
-  
-  // auto button state
-  if ($autoBtn) {
-    if (data.player.auto_enhance) {
-      $autoBtn.classList.add('auto-active');
-      $autoBtn.textContent = '⟳ AUTO ON';
+async function sendAction(action, params = {}) {
+  try {
+    const res = await fetch(`/api/v1/action?user_id=${currentUser}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action, params})
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message);
+      if (data.state) { gameState = data.state; updateAllUI(); }
     } else {
-      $autoBtn.classList.remove('auto-active');
-      $autoBtn.textContent = '⟳ AUTO';
+      showToast(data.message || 'Failed', 'error');
+    }
+  } catch(e) {
+    console.error('sendAction:', e);
+    showToast('Network error', 'error');
+  }
+}
+
+function showToast(msg, type='') {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' toast-'+type : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// --- UPDATE ALL ---
+function updateAllUI() {
+  const p = gameState?.player;
+  const e = gameState?.enemy;
+  const s = gameState?.sector;
+  if (!p || !e || !s) return;
+
+  // Top bar
+  const input = $('input-val'), output = $('output-val'), shards = $('shards-val');
+  if (input) input.textContent = (p.input_credits||0).toLocaleString();
+  if (output) output.textContent = (p.gold||0).toLocaleString();
+  if (shards) shards.textContent = (p.core_points||0).toLocaleString();
+
+  // Pause indicator
+  const dot = $('pause-dot'), txt = $('pause-text'), ind = $('pause-indicator');
+  if (p.paused) {
+    if (dot) dot.textContent = '⏸';
+    if (txt) txt.textContent = 'PAUSED';
+    if (ind) ind.classList.add('paused');
+  } else {
+    if (dot) dot.textContent = '●';
+    if (txt) txt.textContent = 'LIVE';
+    if (ind) ind.classList.remove('paused');
+  }
+
+  // Enemy
+  const zone = $('zone-name'), ename = $('enemy-name'), badge = $('enemy-badge');
+  const hpPctEl = $('hp-pct'), hpBar = $('hp-bar');
+  const bossTimer = $('boss-timer'), bossVal = $('boss-timer-val');
+  const btnBoss = $('btn-start-boss');
+
+  if (zone) zone.textContent = `SECTOR ${s.sector} · ${s.substage}/10 — ${s.zone}`;
+  if (ename) ename.textContent = e.name;
+  if (badge) {
+    badge.textContent = e.is_boss ? 'BOSS' : 'NORMAL';
+    badge.className = 'enemy-badge' + (e.is_boss ? ' boss' : '');
+  }
+
+  // Update reward display
+  const rewOutput = document.getElementById('reward-output');
+  const rewExp = document.getElementById('reward-exp');
+  if (rewOutput) rewOutput.textContent = (e.reward_gold || 0).toLocaleString();
+  if (rewExp) rewExp.textContent = (e.reward_exp || 0).toLocaleString();
+
+  const hpPct = Math.max(0, (e.hp / e.max_hp) * 100);
+  if (hpPctEl) hpPctEl.textContent = Math.round(hpPct) + '%';
+  if (hpBar) {
+    hpBar.style.width = hpPct + '%';
+    hpBar.className = 'bar-fill ' + (hpPct < 25 ? 'bar-red' : hpPct < 60 ? 'bar-amber' : 'bar-green');
+  }
+
+  if (bossTimer && bossVal) {
+    if (e.is_boss && e.boss_timer > 0) {
+      bossTimer.classList.remove('hidden');
+      bossVal.textContent = Math.ceil(e.boss_timer) + 's';
+    } else {
+      bossTimer.classList.add('hidden');
     }
   }
+
+  if (btnBoss) {
+    if (s.substage === 10) {
+      btnBoss.classList.remove('hidden');
+      btnBoss.textContent = s.boss_active ? 'BOSS IN PROGRESS...' : 'START DEBUG SESSION';
+      btnBoss.className = 'btn btn-red btn-full';
+    } else {
+      btnBoss.classList.add('hidden');
+    }
+  }
+
+  // Stats cards
+  const atk = $('stat-atk'), dps = $('stat-dps'), def = $('stat-def');
+  const crit = $('stat-crit'), hp = $('stat-hp'), rank = $('stat-rank'), barExp = $('exp-mini-bar');
+  if (atk) atk.textContent = p.atk;
+  if (dps) dps.textContent = p.dps;
+  if (def) def.textContent = p.defense;
+  if (crit) crit.textContent = (p.crit_rate*100).toFixed(1) + '%';
+  if (hp) hp.textContent = `${p.hp}/${p.max_hp}`;
+  if (rank) rank.textContent = p.level;
+  if (barExp && p.exp_needed > 0) {
+    barExp.style.width = Math.min(100, (p.exp/p.exp_needed)*100) + '%';
+  }
+
+  // Agents
+  const aGrid = $('agents-grid'), aCount = $('agent-count');
+  const agents = gameState.agents || [];
+  if (aCount) aCount.textContent = `${p.deployed_count} / ${p.max_agent_slots}`;
+  if (aGrid) {
+    if (agents.length === 0) {
+      aGrid.innerHTML = '<div class="empty-state">No workers deployed.</div>';
+    } else {
+      aGrid.innerHTML = agents.map(a => `
+        <div class="agent-card ${a.deployed?'deployed':''}" data-agent-id="${a.id}" onclick="selectMergeSlot('${a.id}')">
+          <div class="agent-header">
+            <div class="agent-name">${a.name}</div>
+            <div class="agent-tier tier-${a.tier}">${a.tier.toUpperCase()}</div>
+          </div>
+          <div class="agent-stats-row"><span>Lv.${a.level}</span><span>DPS ${a.dps}</span></div>
+          <div class="agent-actions">
+            <button class="btn btn-sm ${a.deployed?'btn-red':'btn-green'}" onclick="event.stopPropagation();sendAction('${a.deployed?'undeploy_agent':'deploy_agent'}',{agent_id:'${a.id}'})">${a.deployed?'RECALL':'DEPLOY'}</button>
+            <button class="btn btn-amber btn-sm" onclick="event.stopPropagation();sendAction('enhance_agent',{agent_id:'${a.id}'})">UP</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Modules
+  const mGrid = $('modules-grid'), mCount = $('module-count');
+  const slotInj = $('slot-injector'), slotBar = $('slot-barrier'), slotCac = $('slot-cache');
+  const modules = gameState.modules || [];
+  if (mCount) mCount.textContent = modules.length;
+
+  const installed = modules.filter(m => m.installed);
+  const slotMap = {};
+  installed.forEach(m => { slotMap[m.slot] = m; });
+
+  [['injector',slotInj],['barrier',slotBar],['cache',slotCac]].forEach(([s,el]) => {
+    if (!el) return;
+    const mod = slotMap[s];
+    el.textContent = mod ? mod.name : 'EMPTY';
+    el.style.color = mod ? 'var(--text)' : 'var(--muted)';
+  });
+
+  if (mGrid) {
+    if (modules.length === 0) {
+      mGrid.innerHTML = '<div class="empty-state">Module bay empty.</div>';
+    } else {
+      mGrid.innerHTML = modules.map((m,i) => `
+        <div class="module-card ${m.installed?'installed':''}">
+          <div class="module-name">${m.name}</div>
+          <div class="module-rarity rarity-${m.rarity}">${m.rarity.toUpperCase()}</div>
+          <div class="module-stats">${[m.atk_bonus&&'ATK+'+m.atk_bonus,m.def_bonus&&'DEF+'+m.def_bonus,m.hp_bonus&&'HP+'+m.hp_bonus,m.crit_rate_bonus&&'CRIT+'+(m.crit_rate_bonus*100).toFixed(1)+'%'].filter(Boolean).join(' ')||'No bonus'}</div>
+          <div class="module-slot-tag">${m.slot.toUpperCase()}</div>
+          <div class="module-actions">
+            <button class="btn btn-sm ${m.installed?'btn-red':'btn-blue'}" onclick="sendAction('${m.installed?'uninstall_module':'install_module'}',{${m.installed?`slot:'${m.slot}'`:`index:${i}`}})">${m.installed?'REMOVE':'INSTALL'}</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Lab toggles
+  if ($('toggle-auto')) $('toggle-auto').classList.toggle('on', p.auto_enhance);
+  if ($('toggle-pause')) $('toggle-pause').classList.toggle('on', p.paused);
+
+  // Daily
+  const dailyStatus = $('daily-status'), btnDaily = $('btn-daily');
+  if (dailyStatus && btnDaily) {
+    const now = Date.now()/1000;
+    const last = p.last_daily_claim || 0;
+    const remaining = 86400 - (now - last);
+    if (remaining <= 0) {
+      dailyStatus.innerHTML = '<span style="color:var(--green)">● Ready to claim</span>';
+      btnDaily.disabled = false;
+    } else {
+      const h = Math.floor(remaining/3600), m = Math.floor((remaining%3600)/60);
+      dailyStatus.innerHTML = `<span style="color:var(--muted)">Next in ${h}h ${m}m</span>`;
+      btnDaily.disabled = true;
+    }
+  }
+
+  // Prestige
+  ['prestige-sector','prestige-req','prestige-core','prestige-gain'].forEach(id => {
+    const el = $(id); if (!el) return;
+    if (id === 'prestige-sector') el.textContent = s.sector;
+    if (id === 'prestige-req') el.textContent = '40';
+    if (id === 'prestige-core') el.textContent = p.core_points;
+    if (id === 'prestige-gain') el.textContent = '+' + Math.floor(s.sector*0.5);
+  });
+  const btnPrestige = $('btn-prestige');
+  if (btnPrestige) {
+    const can = s.sector >= 40;
+    btnPrestige.disabled = !can;
+    btnPrestige.textContent = can ? 'RECOMPILE' : 'NEED SECTOR 40';
+  }
+
+  // Merge UI
+  document.querySelectorAll('.merge-slot').forEach((el,i) => {
+    const aid = mergeSlots[i];
+    if (aid && agents.length) {
+      const agent = agents.find(a => a.id === aid);
+      if (agent) { el.textContent = agent.name; el.classList.add('filled'); }
+      else { mergeSlots[i] = null; el.textContent = `Slot ${i+1}`; el.classList.remove('filled'); }
+    }
+  });
+  const btnMerge = $('btn-merge');
+  if (btnMerge) btnMerge.disabled = mergeSlots.filter(s=>s!==null).length !== 3;
+
+  // Event stream
+  const stream = $('event-stream');
+  if (stream && eventQueue.length > 0) {
+    stream.innerHTML = eventQueue.slice(0,20).map(e => `<div class="event-entry">${e}</div>`).join('');
+  }
+
+  // Achievements
+  const ach = $('ach-list');
+  if (ach) {
+    const items = [
+      ['First Purge', (s.kills_in_stage||0)>=1],
+      ['Entity Hunter', (s.kills_in_stage||0)>=50],
+      ['Sector Cleaner', (s.kills_in_stage||0)>=100],
+      ['Operator Lv.5', p.level>=5],
+      ['Maintainer Lv.10', p.level>=10],
+      ['Architect Lv.25', p.level>=25],
+      ['Relay Access (S10)', s.sector>=10],
+      ['Core Network (S25)', s.sector>=25],
+      ['Buffer Full (1K)', p.gold>=1000],
+      ['Cache Overflow (10K)', p.gold>=10000],
+    ];
+    ach.innerHTML = items.map(([name,done]) => `
+      <div class="ach-entry ${done?'completed':'locked'}">
+        <span class="ach-icon">${done?'✅':'🔒'}</span>
+        <span class="ach-name ${done?'':'locked'}">${name}</span>
+      </div>`).join('');
+  }
 }
 
-function updateAgentsFromGame(agents) {
-  if (!$agentsGrid) return;
-  if (!agents || agents.length === 0) {
-    $agentsGrid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">No agents deployed.</div>';
-    if ($deployedCount) $deployedCount.textContent = '0 DEPLOYED';
-    return;
-  }
-  
-  const deployed = agents.filter(a => a.deployed).length;
-  const totalSlots = previousState?.max_agent_slots || 2;
-  if ($deployedCount) $deployedCount.textContent = `${deployed} / ${totalSlots} DEPLOYED`;
-  
-  $agentsGrid.innerHTML = agents.map(a => `
-    <div class="agent-card ${a.deployed ? 'deployed' : ''}">
-      <div class="agent-lvl">LVL ${a.level}</div>
-      <div class="agent-avatar">
-        🤖
-        ${a.deployed ? '<div class="active-badge">ON</div>' : ''}
-      </div>
-      <div class="agent-name">${a.name}</div>
-      <div class="agent-rarity ${a.tier}">${a.tier?.toUpperCase()}</div>
-      <div class="agent-stats">
-        <span class="agent-stat"><strong>${a.dps}</strong> DPS</span>
-      </div>
-      <div class="agent-btns">
-        <button class="btn ${a.deployed ? 'btn-red' : 'btn-green'} btn-sm" 
-                onclick="sendCommand('${a.deployed ? 'undeploy ' + a.id : 'deploy ' + a.id}')">
-          ${a.deployed ? 'RECALL' : 'DEPLOY'}
-        </button>
-        <button class="btn btn-amber btn-sm" onclick="sendCommand('ea ${a.id}')">UP</button>
-      </div>
+// --- ACTIONS ---
+function startBoss() { sendAction('start_boss'); }
+function claimDaily() { sendAction('claim_daily'); }
+function toggleAuto() { sendAction('toggle_auto'); }
+function togglePause() { sendAction('toggle_pause'); }
+function recompile() { sendAction('recompile'); }
+function autoInstall() { sendAction('install_module', {index:''}); }
+function openEnhance(stat) {
+  const map = {atk:'atk',def:'defense',hp:'max_hp',crit:'crit_rate'};
+  const labels = {atk:'PROCESSING',defense:'STABILITY',max_hp:'INTEGRITY',crit_rate:'OPTIMIZATION'};
+  const key = map[stat];
+  if (!key) return;
+  const p = gameState?.player;
+  if (!p) return;
+  let val = p[key];
+  if (key === 'crit_rate') val = (val*100).toFixed(1)+'%';
+  showModal(`UPGRADE ${labels[key]}`, `
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:28px;font-weight:700;color:#fff;">${val}</div>
     </div>
-  `).join('');
-  
-  // mini agents list di dashboard
-  if ($agentsMiniList && agents.length > 0) {
-    $agentsMiniList.innerHTML = agents.filter(a => a.deployed).slice(0, 4).map(a => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;">
-        <span>🤖 ${a.name}</span>
-        <span style="font-family:monospace;font-size:12px;color:var(--green)">DPS ${a.dps}</span>
-      </div>
-    `).join('') || '<div style="font-size:12px;color:var(--muted)">No active agents</div>';
-  }
+    <button class="btn btn-green btn-full" onclick="sendAction('enhance',{stat:'${key}'});closeModal()">ENHANCE</button>
+  `);
+}
+function selectMergeSlot(agentId) {
+  const idx = mergeSlots.findIndex(s => s === null);
+  if (idx === -1) { mergeSlots = [agentId, null, null]; }
+  else if (!mergeSlots.includes(agentId)) mergeSlots[idx] = agentId;
+  updateAllUI();
+}
+function executeMerge() {
+  const filled = mergeSlots.filter(s => s !== null);
+  if (filled.length !== 3) { showToast('Select 3 workers','error'); return; }
+  sendAction('merge_agents', {ids: filled.join(' ')});
+  mergeSlots = [null,null,null];
+}
+function openRecruitModal() {
+  showModal('RECRUIT','<div style="color:var(--muted);text-align:center;padding:12px;">Use Deploy on available workers.</div><button class="btn btn-muted btn-full" onclick="closeModal()">CLOSE</button>');
+}
+function addEvent(msg) {
+  const time = new Date().toLocaleTimeString();
+  eventQueue.unshift(`<span style="color:var(--muted)">${time}</span> ${msg}`);
+  if (eventQueue.length > 50) eventQueue.pop();
 }
 
-function updateModulesFromGame(inventory) {
-  if (!$modulesGrid) return;
-  if (!inventory || inventory.length === 0) {
-    $modulesGrid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Module bay empty.</div>';
-    if ($ownedModules) $ownedModules.textContent = '0 OWNED';
-    return;
-  }
-  
-  if ($ownedModules) $ownedModules.textContent = `${inventory.length} OWNED`;
-  
-  $modulesGrid.innerHTML = inventory.map((mod, index) => `
-    <div class="module-card ${mod.installed ? 'equipped' : ''}">
-      <div class="module-icon">⚙️</div>
-      <div class="module-name">${mod.name}</div>
-      <div class="module-rarity ${mod.rarity}">${mod.rarity.toUpperCase()}</div>
-      <div class="module-stat">
-        ${mod.atk_bonus ? `ATK+${mod.atk_bonus} ` : ''}
-        ${mod.def_bonus ? `DEF+${mod.def_bonus} ` : ''}
-        ${mod.hp_bonus ? `HP+${mod.hp_bonus} ` : ''}
-        ${mod.crit_rate_bonus ? `CRIT+${(mod.crit_rate_bonus*100).toFixed(1)}%` : ''}
-      </div>
-      <div class="module-slot">${mod.slot} SLOT</div>
-      <div class="module-btns">
-        <button class="btn ${mod.installed ? 'btn-red' : 'btn-blue'} btn-sm" 
-                onclick="sendCommand('${mod.installed ? 'uninstall ' + mod.slot : 'install ' + (index+1)}')">
-          ${mod.installed ? 'REMOVE' : 'INSTALL'}
-        </button>
-      </div>
-    </div>
-  `).join('');
+// ─── TYPING LOG ENGINE ───────────────────────
+let logBuffer = [];
+let isTyping = false;
+const TYPE_SPEED = 18; // ms per character
+
+function addEvent(msg) {
+  logBuffer.push(msg);
+  if (logBuffer.length > 100) logBuffer.shift();
 }
 
-function updateProgressionFromGame(player) {
-  if ($expFill && player.exp_needed) {
-    const pct = Math.min(100, (player.exp / player.exp_needed) * 100);
-    $expFill.style.width = pct + '%';
-  }
-  if ($expLabel) $expLabel.textContent = player.exp.toLocaleString();
-  if ($rankDisplay) $rankDisplay.textContent = `RANK ${player.level}`;
+function flushLogBuffer() {
+  if (logBuffer.length === 0) return;
+  
+  const messages = [...logBuffer];
+  logBuffer = [];
+  
+  // Process sequentially with typing effect
+  typeMessages(messages, 0);
 }
 
-// --- COMMANDS ---
-async function sendCommand(cmd) {
+async function typeMessages(messages, index) {
+  if (index >= messages.length || !$('event-stream')) return;
+  
+  const msg = messages[index];
+  const entry = document.createElement('div');
+  entry.className = 'event-entry typing';
+  
+  const timeSpan = document.createElement('span');
+  timeSpan.style.cssText = 'color:var(--muted);margin-right:8px;';
+  timeSpan.textContent = new Date().toLocaleTimeString();
+  entry.appendChild(timeSpan);
+  
+  const textSpan = document.createElement('span');
+  entry.appendChild(textSpan);
+  
+  const stream = $('event-stream');
+  // Remove placeholder
+  const placeholder = stream.querySelector('.event-placeholder');
+  if (placeholder) placeholder.remove();
+  
+  stream.insertBefore(entry, stream.firstChild);
+  
+  // Type character by character
+  for (let i = 0; i < msg.length; i++) {
+    textSpan.textContent += msg[i];
+    await new Promise(r => setTimeout(r, TYPE_SPEED + Math.random() * 8));
+  }
+  
+  // Remove cursor class
+  entry.classList.remove('typing');
+  
+  // Keep max 30 entries
+  while (stream.children.length > 30) {
+    stream.lastChild?.remove();
+  }
+  
+  // Next message with small delay
+  await new Promise(r => setTimeout(r, 400));
+  typeMessages(messages, index + 1);
+}
+
+// Flush buffer every 5 seconds
+setInterval(flushLogBuffer, 5000);
+
+// --- MODALS ---
+function showModal(title, html) {
+  const t = $('modal-title'), b = $('modal-body'), o = $('modal-overlay');
+  if (t) t.textContent = title;
+  if (b) b.innerHTML = html;
+  if (o) o.classList.add('open');
+}
+function closeModal() { const o = $('modal-overlay'); if (o) o.classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === $('modal-overlay')) closeModal(); }
+
+// --- TABS ---
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const tab = document.getElementById('tab-'+name);
+  if (tab) tab.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-tab="${name}"]`);
+  if (nav) nav.classList.add('active');
+}
+
+// --- WEBSOCKET ---
+function connectWS() {
   try {
-    const res = await fetch('/api/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cmd })
-    });
-    if (!res.ok) throw new Error('Command failed');
-    const data = await res.json();
-    showToast(data.response || 'Done', 'success');
-    // Refresh state immediately
-    fetchState();
-  } catch (e) {
-    console.error('sendCommand error:', e);
-    showToast('Command failed. Check console.', 'error');
-  }
-}
-
-// --- NAVIGATION (preserve existing tab system) ---
-function switchPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const page = document.getElementById(`page-${name}`);
-  if (page) page.classList.add('active');
-  
-  document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll(`[data-page="${name}"]`).forEach(n => n.classList.add('active'));
-}
-
-// Attach nav handlers
-document.querySelectorAll('.nav-item, .bnav-item').forEach(item => {
-  item.addEventListener('click', () => switchPage(item.dataset.page));
-});
-
-// Auto-enhance toggle
-if ($autoBtn) {
-  $autoBtn.onclick = () => {
-    const isAuto = $autoBtn.classList.contains('auto-active');
-    sendCommand(isAuto ? 'auto off' : 'auto on');
-  };
+    const ws = new WebSocket(`ws://${location.hostname}:8081`);
+    ws.onmessage = e => {
+      try { const d = JSON.parse(e.data); addEvent(d.message); updateAllUI(); } catch(ex) {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 5000);
+  } catch(e) {}
 }
 
 // --- INIT ---
 window.addEventListener('load', () => {
-  connectWebSocket();
-  setInterval(processEventBuffer, BUFFER_INTERVAL);
-  setInterval(fetchState, STATE_INTERVAL);
-  fetchState(); // initial load
-  
-  // Handle commands for elements with data-command
-  document.addEventListener('click', e => {
-    const btn = e.target.closest('[data-command]');
-    if (btn) {
-      if (btn.id === 'auto-btn') return; // Handled separately
-      e.preventDefault();
-      sendCommand(btn.dataset.command);
-    }
+  currentUser = getUserId();
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => switchTab(item.dataset.tab));
   });
+  document.querySelectorAll('.merge-slot').forEach((el,i) => {
+    el.addEventListener('click', () => { mergeSlots[i] = null; updateAllUI(); });
+  });
+  fetchState();
+  setInterval(fetchState, STATE_INTERVAL);
+  connectWS();
 });
